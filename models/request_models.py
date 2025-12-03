@@ -125,6 +125,7 @@ class SourceSentence(BaseModel):
     level: int = Field(..., description="Sentence level (0, 1, 2...)")
     score: float = Field(..., description="Similarity score with the query")
     sentence_index: Optional[int] = Field(None, description="Sentence index in original file")
+    magic_word: Optional[str] = Field(None, description="Magic word used for retrieval")
 
     class Config:
         json_schema_extra = {

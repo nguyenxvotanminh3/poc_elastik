@@ -1,19 +1,19 @@
 INFO:     Will watch for changes in these directories: ['/Users/minknguyen/Desktop/Working/POC/ai-vector-elastic-demo']
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process [34104] using WatchFiles
+INFO:     Started reloader process [36587] using WatchFiles
 /Users/minknguyen/Desktop/Working/POC/ai-vector-elastic-demo/venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
   warnings.warn(
-INFO:     Started server process [34107]
+INFO:     Started server process [36590]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 Initializing OpenAI Embedding client...
 OpenAI Embedding ready! Model: text-embedding-3-small
-INFO:     127.0.0.1:65192 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65194 - "GET /documents/count HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65211 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65213 - "GET /documents/count HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65217 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65219 - "GET /documents/count HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49786 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49788 - "GET /documents/count HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49803 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49806 - "GET /documents/count HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49809 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49811 - "GET /documents/count HTTP/1.1" 200 OK
 [DEBUG] Query: 'where is heaven
 ' → Keywords extracted: ['heaven']
 [DEBUG] Meaningful words in query: ['heaven']
@@ -57,8 +57,14 @@ INFO:     127.0.0.1:65219 - "GET /documents/count HTTP/1.1" 200 OK
 [Level 1.18] Searching: 'heaven made' or 'made heaven'
 [Level 1.18] Found 3 for 'heaven made', 3 for 'made heaven' (EXACT only, no words between)
 [INFO] Generated keyword_meaning via LLM
-INFO:     127.0.0.1:65221 - "POST /ask HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65230 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65233 - "GET /documents/count HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65288 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65290 - "GET /documents/count HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49813 - "POST /ask HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49828 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49831 - "GET /documents/count HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50456 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50458 - "GET /documents/count HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50494 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50496 - "GET /documents/count HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50507 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50509 - "GET /documents/count HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50511 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50513 - "GET /documents/count HTTP/1.1" 200 OK
