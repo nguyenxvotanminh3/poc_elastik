@@ -57,6 +57,7 @@ User asks a question
     → Build structured prompt
     → Call LLM → Get answer
     → Return session_id for continuation
+    
 ```
 ### 3. Tell me more (Continue)
 ```
