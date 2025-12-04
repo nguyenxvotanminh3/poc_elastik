@@ -18,8 +18,8 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script_stop: true
-          timeout: 10m
-          command_timeout: 10m
+          timeout: 30m
+          command_timeout: 30m
           script: |
             set -e
             
@@ -33,140 +33,98 @@ jobs:
             PROJECT_DIR="/srv/poc_elastik"
             REPO_BRANCH="main"
             
-            # Load basic path (chỉ giữ lại cái này là đủ)
+            # Load path cơ bản
             export PATH=$PATH:/usr/local/bin:/usr/bin
             
             # ============================================
             # 1. CLONE/UPDATE CODE
             # ============================================
             echo ""
-            echo ">>> [1/6] Cập nhật source code..."
+            echo ">>> [1/5] Cập nhật source code..."
             
             # Tạo thư mục nếu chưa có
             if [ ! -d "$PROJECT_DIR" ]; then
-              echo "Creating project directory..."
               sudo mkdir -p "$PROJECT_DIR"
               sudo chown $USER:$USER "$PROJECT_DIR"
             fi
             
             cd "$PROJECT_DIR"
             
-            # Clone nếu chưa có (Dùng github-poc như đã config)
+            # Clone code
             if [ ! -d ".git" ]; then
-              echo "Cloning repository..."
               git clone git@github-poc:${{ github.repository }}.git .
             fi
             
-            # Pull code mới nhất
-            echo "Fetching latest code..."
+            # Pull code mới
             git fetch origin $REPO_BRANCH
             git reset --hard origin/$REPO_BRANCH
-            echo "✅ Code updated successfully"
+            echo "✅ Code updated"
             
             # ============================================
-            # 2. SETUP PYTHON ENVIRONMENT
+            # 2. SETUP PYTHON
             # ============================================
             echo ""
-            echo ">>> [2/6] Thiết lập Python virtual environment..."
+            echo ">>> [2/5] Cài đặt thư viện Python..."
             
-            # Check Python version
             PYTHON_CMD="python3"
-            if ! command -v python3 &> /dev/null; then
-              PYTHON_CMD="python"
-            fi
-            
-            echo "Using Python: $($PYTHON_CMD --version)"
+            if ! command -v python3 &> /dev/null; then PYTHON_CMD="python"; fi
             
             if [ ! -d "venv" ]; then
-              echo "Creating virtual environment..."
               $PYTHON_CMD -m venv venv
             fi
             
             source venv/bin/activate
-            
-            echo "Upgrading pip..."
             pip install --upgrade pip -q
-            
-            echo "Installing dependencies..."
             pip install -r requirements.txt -q
             echo "✅ Dependencies installed"
             
             # ============================================
-            # 3. CHECK ENVIRONMENT FILE
+            # 3. LOAD ENV & CHECK ELASTICSEARCH
             # ============================================
             echo ""
-            echo ">>> [3/6] Kiểm tra file .env..."
+            echo ">>> [3/5] Load môi trường & Kiểm tra ES..."
             
-            if [ ! -f ".env" ]; then
-              echo "⚠️  WARNING: .env file not found!"
-              echo "Please manually create .env file on server"
-            else
-              echo "✅ .env file exists"
-            fi
-            
-            # ============================================
-            # 4. CHECK ELASTICSEARCH
-            # ============================================
-            echo ""
-            echo ">>> [4/6] Kiểm tra Elasticsearch..."
-            
-            # Load biến ES_HOST từ .env nếu có, hoặc dùng default
+            # --- PHẦN QUAN TRỌNG: Load .env an toàn ---
             if [ -f ".env" ]; then
-              export $(grep -v '^#' .env | xargs)
+              echo "Loading .env file..."
+              set -a  # Tự động export các biến được load
+              source .env
+              set +a
+              echo "✅ Loaded environment variables"
+            else
+              echo "⚠️  WARNING: .env file not found. App might crash!"
             fi
-            ES_HOST="${ES_HOST:-http://localhost:9200}"
             
+            # Kiểm tra Elasticsearch
+            ES_HOST="${ES_HOST:-http://localhost:9200}"
             if curl -s "$ES_HOST" > /dev/null 2>&1; then
               echo "✅ Elasticsearch is running at $ES_HOST"
             else
-              echo "⚠️  WARNING: Elasticsearch is NOT responding at $ES_HOST"
-              echo "Script will continue, but App might fail."
+              echo "⚠️  WARNING: Elasticsearch NOT responding at $ES_HOST"
             fi
             
             # ============================================
-            # 5. STOP OLD SERVICES
+            # 4. RESTART SERVICES
             # ============================================
             echo ""
-            echo ">>> [5/6] Dừng services cũ..."
+            echo ">>> [4/5] Khởi động lại services..."
             
-            # Stop via PM2
+            # Xóa tiến trình cũ
             pm2 delete poc-fastapi 2>/dev/null || true
             pm2 delete poc-streamlit 2>/dev/null || true
-            
-            # Kill processes safety
             pkill -f "uvicorn main:app" 2>/dev/null || true
             pkill -f "streamlit run streamlit_app.py" 2>/dev/null || true
             
-            sleep 2
-            echo "✅ Old services stopped"
-            
-            # ============================================
-            # 6. START NEW SERVICES
-            # ============================================
-            echo ""
-            echo ">>> [6/6] Khởi động services mới..."
-            
-            mkdir -p logs
+            # Khởi động lại
             VENV_PYTHON="$PROJECT_DIR/venv/bin/python"
             
-            # Start FastAPI
-            echo "Starting FastAPI..."
+            # 1. FastAPI
             pm2 start $VENV_PYTHON \
               --name poc-fastapi \
               --cwd "$PROJECT_DIR" \
               -- -m uvicorn main:app --host 0.0.0.0 --port 8000
             
-            sleep 5
-            
-            # Verify FastAPI
-            if curl -s http://localhost:8000/health > /dev/null 2>&1; then
-              echo "✅ FastAPI is running"
-            else
-              echo "⚠️  FastAPI health check failed (might just be slow startup)"
-            fi
-            
-            # Start Streamlit
-            echo "Starting Streamlit..."
+            # 2. Streamlit
             pm2 start $VENV_PYTHON \
               --name poc-streamlit \
               --cwd "$PROJECT_DIR" \
@@ -177,7 +135,11 @@ jobs:
                 --browser.gatherUsageStats false
             
             # ============================================
-            # SAVE & EXIT
+            # 5. FINISH
             # ============================================
             pm2 save
-            echo "✅ DEPLOYMENT COMPLETED!"
+            echo ""
+            echo "✅ DEPLOYMENT SUCCESSFUL!"
+            echo "Check URLs:"
+            echo "- FastAPI: http://$Input_HOST:8000/docs"
+            echo "- Web App: http://$Input_HOST:8501"
