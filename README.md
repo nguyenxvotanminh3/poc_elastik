@@ -58,7 +58,6 @@ User asks a question
     → Call LLM → Get answer
     → Return session_id for continuation
 ```
-
 ### 3. Tell me more (Continue)
 ```
 User clicks "Tell me more" with session_id
