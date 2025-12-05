@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 print("--- DIAGNOSING OPENAI 404 ---")
 load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY")
+api_key = os.getenv("EMBEDDING_API_KEY")
 
 if not api_key:
     print("❌ API Key missing")
