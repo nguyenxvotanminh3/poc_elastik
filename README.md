@@ -3,7 +3,6 @@
 **Full-featured Q&A system** with multi-level retrieval, structured prompt builder, and "Tell me more" functionality.
 
 ## 🎯 Project Goals
-
 Demo AI Q&A engine with:
 - **Multi-level retrieval** (Level 0, 1, 2...) - gradually dive deeper into documents
 - **Structured prompt builder** - clearly structured prompts
