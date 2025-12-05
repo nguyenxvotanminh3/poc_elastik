@@ -71,7 +71,6 @@ The system searches through 4 levels progressively:
 ```
 Final Score = Text Match × Vector Similarity
 ```
-
 ---
 
 ## Example: "Where is heaven?"
