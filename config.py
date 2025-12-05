@@ -6,9 +6,9 @@ from functools import lru_cache
 
 
 class Settings(BaseSettings):
-    OPENAI_API_KEY: str
-    OPENAI_BASE_URL: Optional[str] = None  # For DeepSeek: https://api.deepseek.com
-    EMBEDDING_API_KEY: Optional[str] = None  # Separate key for embeddings (OpenAI)
+    DEEPSEEK_API_KEY: str
+    DEEPSEEK_BASE_URL: Optional[str] = None  # For DeepSeek: https://api.deepseek.com
+    OPENAI_API_KEY: Optional[str] = None  # Separate key for embeddings (OpenAI)
 
     ES_HOST: str = "http://localhost:9200"
     ES_USERNAME: Optional[str] = None
@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = "text-embedding-3-small"
     CHAT_MODEL: str = "deepseek-chat"  # or gpt-4o-mini
 
-    @field_validator("ES_USERNAME", "ES_PASSWORD", "OPENAI_BASE_URL", "EMBEDDING_API_KEY", mode="before")
+    @field_validator("ES_USERNAME", "ES_PASSWORD", "DEEPSEEK_BASE_URL", "OPENAI_API_KEY", mode="before")
     @classmethod
     def empty_str_to_none(cls, v):
         """Convert empty strings to None"""

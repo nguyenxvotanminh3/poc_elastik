@@ -12,13 +12,13 @@ from openai import OpenAI
 from config import settings
 
 # Chat client (DeepSeek or OpenAI)
-if settings.OPENAI_BASE_URL:
+if settings.DEEPSEEK_BASE_URL:
     chat_client = OpenAI(
-        api_key=settings.OPENAI_API_KEY,
-        base_url=settings.OPENAI_BASE_URL
+        api_key=settings.DEEPSEEK_API_KEY,
+        base_url=settings.DEEPSEEK_BASE_URL
     )
 else:
-    chat_client = OpenAI(api_key=settings.OPENAI_API_KEY)
+    chat_client = OpenAI(api_key=settings.DEEPSEEK_API_KEY)
 
 
 def generate_question_variants(

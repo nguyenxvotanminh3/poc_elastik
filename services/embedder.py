@@ -1,15 +1,15 @@
 # services/embedder.py
 """
 Embedder Module - OpenAI Embeddings API
-Sử dụng EMBEDDING_API_KEY để gọi OpenAI embedding API
+Sử dụng OPENAI_API_KEY để gọi OpenAI embedding API
 """
 from typing import List
 from openai import OpenAI
 from config import settings
 
-# Initialize OpenAI client with EMBEDDING_API_KEY
+# Initialize OpenAI client with OPENAI_API_KEY
 print("Initializing OpenAI Embedding client...")
-client = OpenAI(api_key=settings.EMBEDDING_API_KEY)
+client = OpenAI(api_key=settings.OPENAI_API_KEY)
 EMBEDDING_MODEL = settings.EMBEDDING_MODEL  # text-embedding-3-small
 print(f"OpenAI Embedding ready! Model: {EMBEDDING_MODEL}")
 

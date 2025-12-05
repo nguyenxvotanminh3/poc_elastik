@@ -102,7 +102,7 @@ docker run -d --name es-demo \
 Create `.env` file:
 
 ```env
-OPENAI_API_KEY=sk-your-openai-api-key
+DEEPSEEK_API_KEY=sk-your-openai-api-key
 
 ES_HOST=http://localhost:9200
 ES_INDEX_NAME=demo_documents

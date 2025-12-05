@@ -14,13 +14,13 @@ from pathlib import Path
 from config import settings
 
 # Initialize OpenAI client for keyword extraction (uses chat model)
-if settings.OPENAI_BASE_URL:
+if settings.DEEPSEEK_BASE_URL:
     client = OpenAI(
-        api_key=settings.OPENAI_API_KEY,
-        base_url=settings.OPENAI_BASE_URL
+        api_key=settings.DEEPSEEK_API_KEY,
+        base_url=settings.DEEPSEEK_BASE_URL
     )
 else:
-    client = OpenAI(api_key=settings.OPENAI_API_KEY)
+    client = OpenAI(api_key=settings.DEEPSEEK_API_KEY)
 
 # Load magic words from file
 MAGIC_WORDS_PATH = Path(__file__).parent.parent / "magic_words.txt"
