@@ -378,6 +378,19 @@ if st.session_state.conversation_history:
         st.markdown("**Question Variants:**")
         st.text(result.get("question_variants", "N/A"))
         
+        # === Keywords Section ===
+        st.markdown("### 🔑 Extracted Keywords")
+        keywords = result.get("keywords", [])
+        if keywords:
+            # Display keywords as tags/badges
+            keywords_html = " ".join([
+                f'<span style="background-color: #e3f2fd; color: #1976d2; padding: 5px 12px; border-radius: 15px; margin: 3px; display: inline-block; font-weight: 500;">{kw}</span>'
+                for kw in keywords
+            ])
+            st.markdown(keywords_html, unsafe_allow_html=True)
+        else:
+            st.warning("No keywords extracted")
+        
         st.markdown("**Keyword Meaning:**")
         st.text(result.get("keyword_meaning", "N/A"))
         
