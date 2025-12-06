@@ -231,10 +231,10 @@ with st.sidebar:
     """, unsafe_allow_html=True)
     
     # Use vertical layout for better text display
-    level_0_enabled = st.checkbox("✓ Level 0", value=True, help="Keyword combinations", key="lvl0")
+    level_0_enabled = st.checkbox("✓ Level 0", value=True, help="Keyword combinations (all keywords together)", key="lvl0")
     level_1_enabled = st.checkbox("✓ Level 1", value=True, help="Single keywords", key="lvl1")
     level_2_enabled = st.checkbox("✓ Level 2", value=True, help="Synonyms", key="lvl2")
-    level_3_enabled = st.checkbox("✓ Level 3", value=True, help="Keyword + Magic words", key="lvl3")
+    level_3_enabled = st.checkbox("✓ Level 3", value=True, help="Keyword + Magic words (e.g., 'heaven is')", key="lvl3")
     
     # Store selected levels
     enabled_levels = []

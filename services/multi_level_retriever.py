@@ -564,7 +564,7 @@ class MultiLevelRetriever:
         
         if single_keyword_mode and len(self.keywords) == 1:
             # SINGLE KEYWORD MODE: Sub-levels
-            # Each magic word is a separate sub-level (1.0, 1.1, 1.2...)
+            # Each magic word is a separate sub-level (3.0, 3.1, 3.2...)
             keyword = self.keywords[0]
             
             while len(sentences) < limit and current_offset < len(magic_words):
@@ -572,7 +572,7 @@ class MultiLevelRetriever:
                 current_magic_word = magic
                 phrase = f"{keyword} {magic}"
                 
-                print(f"[Level 1.{current_offset}] Searching exact phrase: '{phrase}'")
+                print(f"[Level 3.{current_offset}] Searching exact phrase: '{phrase}'")
                 
                 # Priority 1: EXACT consecutive match (slop=0) - e.g., "heaven is"
                 exact_results = self._exact_phrase_search(
@@ -582,13 +582,13 @@ class MultiLevelRetriever:
                     slop=0
                 )
                 
-                print(f"[Level 1.{current_offset}] Found {len(exact_results)} EXACT matches for '{phrase}'")
+                print(f"[Level 3.{current_offset}] Found {len(exact_results)} EXACT matches for '{phrase}'")
                 
                 # Add exact matches first (highest priority)
                 for r in exact_results:
                     if r["text"] not in used_texts:
                         r["magic_word"] = magic
-                        r["sub_level"] = f"1.{current_offset}"
+                        r["sub_level"] = f"3.{current_offset}"
                         r["match_type"] = "exact_phrase"
                         r["score"] = r.get("score", 1.0) * 3.0  # Boost exact matches
                         sentences.append(r)
@@ -605,12 +605,12 @@ class MultiLevelRetriever:
                         slop=2
                     )
                     
-                    print(f"[Level 1.{current_offset}] Found {len(near_results)} NEAR matches for '{phrase}' (slop=2)")
+                    print(f"[Level 3.{current_offset}] Found {len(near_results)} NEAR matches for '{phrase}' (slop=2)")
                     
                     for r in near_results:
                         if r["text"] not in used_texts:
                             r["magic_word"] = magic
-                            r["sub_level"] = f"1.{current_offset}"
+                            r["sub_level"] = f"3.{current_offset}"
                             r["match_type"] = "near_phrase"
                             r["score"] = r.get("score", 1.0) * 2.0  # Boost near matches
                             sentences.append(r)
@@ -762,18 +762,13 @@ def get_next_batch(
             level_offsets["0"] = new_offset
             
         elif current_level == 1:
-            # Level 1: Keyword + Magic words (e.g., "heaven is", "heaven was")
-            new_sents, new_offset, exhausted, magic_word = retriever.fetch_level3_sentences(
+            # Level 1: Single keywords only
+            new_sents, new_offset, exhausted = retriever.fetch_level1_sentences(
                 offset=level_offsets.get("1", 0),
                 limit=remaining,
-                used_texts=used_texts,
-                single_keyword_mode=is_single_keyword
+                used_texts=used_texts
             )
             level_offsets["1"] = new_offset
-            
-            # Store current magic word for display
-            if magic_word:
-                level_offsets["1_magic_word"] = magic_word
             
         elif current_level == 2:
             # Level 2: For single keyword = synonyms + magic words
@@ -802,13 +797,18 @@ def get_next_batch(
                 level_offsets["2"] = [k_off, s_off]
             
         elif current_level == 3:
-            # Level 3: Single keywords only (fallback)
-            new_sents, new_offset, exhausted = retriever.fetch_level1_sentences(
+            # Level 3: Keyword + Magic words (e.g., "heaven is", "heaven was")
+            new_sents, new_offset, exhausted, magic_word = retriever.fetch_level3_sentences(
                 offset=level_offsets.get("3", 0),
                 limit=remaining,
-                used_texts=used_texts
+                used_texts=used_texts,
+                single_keyword_mode=is_single_keyword
             )
             level_offsets["3"] = new_offset
+            
+            # Store current magic word for display
+            if magic_word:
+                level_offsets["3_magic_word"] = magic_word
         
         else:
             break
