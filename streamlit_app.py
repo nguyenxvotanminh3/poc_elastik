@@ -161,6 +161,8 @@ if "conversation_history" not in st.session_state:
     st.session_state.conversation_history = []
 if "can_continue" not in st.session_state:
     st.session_state.can_continue = False
+if "selected_levels" not in st.session_state:
+    st.session_state.selected_levels = None
 
 
 # Sidebar
@@ -450,10 +452,12 @@ if ask_button and user_question:
             if status_code == 200 and "answer" in result:
                 st.session_state.session_id = result.get("session_id")
                 st.session_state.can_continue = result.get("can_continue", False)
+                st.session_state.selected_levels = enabled_levels if enabled_levels else None
                 st.session_state.conversation_history.append({
                     "type": "ask",
                     "question": user_question,
-                    "result": result
+                    "result": result,
+                    "enabled_levels": enabled_levels if enabled_levels else None
                 })
                 st.rerun()
             else:
@@ -498,8 +502,10 @@ if st.session_state.conversation_history:
         if entry["type"] == "ask":
             st.markdown(f"### 🙋 Question")
             st.markdown(f"> {entry['question']}")
+            enabled_levels_entry = entry.get("enabled_levels", st.session_state.get("selected_levels"))
         else:
             st.markdown(f"### 📚 Tell me more (Level {result.get('current_level', '?')})")
+            enabled_levels_entry = st.session_state.get("selected_levels")
         
         # Answer
         st.markdown("### 🤖 Answer")
@@ -533,6 +539,57 @@ if st.session_state.conversation_history:
         
         st.markdown("**Keyword Meaning:**")
         st.text(result.get("keyword_meaning", "N/A"))
+
+        # === Synonym visibility for Level 2/3 ===
+        level2_syns = result.get("level2_synonyms", [])
+        level2_by_kw = result.get("level2_synonyms_by_keyword", [])
+        show_level2 = (bool(level2_syns) or bool(level2_by_kw)) and (
+            enabled_levels_entry is None or 2 in enabled_levels_entry
+        )
+        if show_level2:
+            st.markdown("### 🔁 Level 2 Synonyms")
+            if level2_by_kw:
+                for item in level2_by_kw:
+                    kw = item.get("keyword", "")
+                    syns = item.get("synonyms", [])
+                    if not syns:
+                        continue
+                    syn_html = " ".join([
+                        f'<span style="background-color: #fff3cd; color: #856404; padding: 5px 12px; border-radius: 15px; margin: 3px; display: inline-block; font-weight: 500;">{syn}</span>'
+                        for syn in syns
+                    ])
+                    st.markdown(f"**{kw}**: " + syn_html, unsafe_allow_html=True)
+            elif level2_syns:
+                syn_html = " ".join([
+                    f'<span style="background-color: #fff3cd; color: #856404; padding: 5px 12px; border-radius: 15px; margin: 3px; display: inline-block; font-weight: 500;">{syn}</span>'
+                    for syn in level2_syns
+                ])
+                st.markdown(syn_html, unsafe_allow_html=True)
+
+        level3_pairs = result.get("level3_synonym_magic_pairs", [])
+        level3_by_kw = result.get("level3_synonym_magic_by_keyword", [])
+        show_level3 = (bool(level3_pairs) or bool(level3_by_kw)) and (
+            enabled_levels_entry is None or 3 in enabled_levels_entry or result.get("current_level", 0) >= 3
+        )
+        if show_level3:
+            st.markdown("### ✨ Level 3 Synonym + Magic")
+            if level3_by_kw:
+                for item in level3_by_kw:
+                    kw = item.get("keyword", "")
+                    pairs = item.get("pairs", [])
+                    if not pairs:
+                        continue
+                    pair_html = " ".join([
+                        f'<span style="background-color: #e8f5e9; color: #2e7d32; padding: 5px 12px; border-radius: 15px; margin: 3px; display: inline-block; font-weight: 500;">{pair}</span>'
+                        for pair in pairs
+                    ])
+                    st.markdown(f"**{kw}**: " + pair_html, unsafe_allow_html=True)
+            elif level3_pairs:
+                pair_html = " ".join([
+                    f'<span style="background-color: #e8f5e9; color: #2e7d32; padding: 5px 12px; border-radius: 15px; margin: 3px; display: inline-block; font-weight: 500;">{pair}</span>'
+                    for pair in level3_pairs
+                ])
+                st.markdown(pair_html, unsafe_allow_html=True)
         
         # === ALWAYS VISIBLE: Source Sentences ===
         st.markdown("### 📄 Source Sentences")

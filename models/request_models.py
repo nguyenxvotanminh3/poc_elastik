@@ -3,7 +3,7 @@
 Request/Response Models with full Swagger documentation
 """
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 
 
 # ============================================================
@@ -161,6 +161,22 @@ class AskResponse(BaseModel):
         default_factory=list,
         description="List of extracted keywords from the query"
     )
+    level2_synonyms: List[str] = Field(
+        default_factory=list,
+        description="Synonyms generated for Level 2 (for display/debug)"
+    )
+    level2_synonyms_by_keyword: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Synonyms grouped by keyword for Level 2"
+    )
+    level3_synonym_magic_pairs: List[str] = Field(
+        default_factory=list,
+        description="Synonym + magic word pairs considered for Level 3 (preview)"
+    )
+    level3_synonym_magic_by_keyword: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Synonym+magic pairs grouped by keyword for Level 3"
+    )
     keyword_meaning: str = Field(
         ..., 
         description="Explanation of main keywords"
@@ -220,6 +236,22 @@ class ContinueResponse(BaseModel):
     answer: str = Field(..., description="Expanded answer from AI")
     question_variants: str = Field(..., description="NEW question variants (no repeats)")
     keywords: List[str] = Field(default_factory=list, description="List of extracted keywords")
+    level2_synonyms: List[str] = Field(
+        default_factory=list,
+        description="Synonyms generated for Level 2 (for display/debug)"
+    )
+    level2_synonyms_by_keyword: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Synonyms grouped by keyword for Level 2"
+    )
+    level3_synonym_magic_pairs: List[str] = Field(
+        default_factory=list,
+        description="Synonym + magic word pairs considered for Level 3 (preview)"
+    )
+    level3_synonym_magic_by_keyword: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Synonym+magic pairs grouped by keyword for Level 3"
+    )
     keyword_meaning: str = Field(..., description="NEW/deeper keyword meanings")
     source_sentences: List[SourceSentence] = Field(..., description="Source sentences from deeper levels")
     current_level: int = Field(..., description="Current level")

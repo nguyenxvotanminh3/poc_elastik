@@ -52,8 +52,12 @@ from services.prompt_builder import (
     call_llm,
 )
 from services.session_manager import session_manager
-from services.keyword_extractor import extract_keywords as extract_clean_keywords
-from services.multi_level_retriever import get_next_batch
+from services.keyword_extractor import (
+    extract_keywords as extract_clean_keywords,
+    get_magical_words_for_level3,
+    generate_synonyms,
+)
+from services.multi_level_retriever import get_next_batch, MultiLevelRetriever
 from models.request_models import (
     AskRequest, 
     AskResponse, 
@@ -499,6 +503,31 @@ async def ask(req: AskRequest):
         clean_keywords = [w for w in req.query.lower().split() if len(w) > 3][:5]
         print(f"[DEBUG] Fallback keywords: {clean_keywords}")
     
+    # Prepare Level 2/3 synonym debug info for display
+    level2_synonyms = []
+    level3_synonym_magic_pairs = []
+    level2_synonyms_by_keyword = []
+    level3_synonym_magic_by_keyword = []
+    try:
+        display_retriever = MultiLevelRetriever(clean_keywords)
+        level2_synonyms = display_retriever._get_all_synonym_terms()[:30]
+        magic_words_preview = get_magical_words_for_level3()[:5]
+        synonym_preview = level2_synonyms[:5]
+        level3_synonym_magic_pairs = [
+            f"{syn} + {magic}" for syn in synonym_preview for magic in magic_words_preview
+        ][:50]
+
+        # Group synonyms by keyword for clarity
+        for kw in clean_keywords:
+            syns = generate_synonyms(kw)[:10]
+            level2_synonyms_by_keyword.append({"keyword": kw, "synonyms": syns})
+            # Build Level 3 pairs per keyword (using first few synonyms and magic words)
+            syn_preview_kw = syns[:5]
+            pairs_kw = [f"{s} + {m}" for s in syn_preview_kw for m in magic_words_preview][:20]
+            level3_synonym_magic_by_keyword.append({"keyword": kw, "pairs": pairs_kw})
+    except Exception as e:
+        logger.warning(f"[API /ask] Unable to build synonym preview: {e}")
+
     # Step 2: Get first batch of sentences using multi-level retrieval
     # Count meaningful words in original query (excluding stopwords and question words)
     stopwords = {'what', 'where', 'when', 'who', 'why', 'how', 'which', 'whom', 'whose',
@@ -606,6 +635,10 @@ async def ask(req: AskRequest):
         answer=answer,
         question_variants=question_variants,
         keywords=clean_keywords,  # Add extracted keywords list
+        level2_synonyms=level2_synonyms,
+        level2_synonyms_by_keyword=level2_synonyms_by_keyword,
+        level3_synonym_magic_pairs=level3_synonym_magic_pairs,
+        level3_synonym_magic_by_keyword=level3_synonym_magic_by_keyword,
         keyword_meaning=keyword_meaning,
         source_sentences=source_sentences,
         current_level=level_used,
@@ -692,6 +725,29 @@ async def continue_conversation(req: ContinueRequest):
     
     # Use stored keywords from session
     keywords = session.keywords if session.keywords else [w for w in session.original_query.lower().split() if len(w) > 3][:5]
+
+    # Prepare Level 2/3 synonym debug info for display
+    level2_synonyms = []
+    level3_synonym_magic_pairs = []
+    level2_synonyms_by_keyword = []
+    level3_synonym_magic_by_keyword = []
+    try:
+        display_retriever = MultiLevelRetriever(keywords)
+        level2_synonyms = display_retriever._get_all_synonym_terms()[:30]
+        magic_words_preview = get_magical_words_for_level3()[:5]
+        synonym_preview = level2_synonyms[:5]
+        level3_synonym_magic_pairs = [
+            f"{syn} + {magic}" for syn in synonym_preview for magic in magic_words_preview
+        ][:50]
+
+        for kw in keywords:
+            syns = generate_synonyms(kw)[:10]
+            level2_synonyms_by_keyword.append({"keyword": kw, "synonyms": syns})
+            syn_preview_kw = syns[:5]
+            pairs_kw = [f"{s} + {m}" for s in syn_preview_kw for m in magic_words_preview][:20]
+            level3_synonym_magic_by_keyword.append({"keyword": kw, "pairs": pairs_kw})
+    except Exception as e:
+        logger.warning(f"[API /continue] Unable to build synonym preview: {e}")
     
     # Get next batch using multi-level retriever
     source_sentences, updated_state, level_used = get_next_batch(
@@ -707,6 +763,10 @@ async def continue_conversation(req: ContinueRequest):
             answer="All available information has been explored. Please start a new conversation with a different question.",
             question_variants=[],
             keywords=session.keywords if hasattr(session, 'keywords') and session.keywords else [],
+            level2_synonyms=level2_synonyms,
+                level2_synonyms_by_keyword=level2_synonyms_by_keyword,
+            level3_synonym_magic_pairs=level3_synonym_magic_pairs,
+                level3_synonym_magic_by_keyword=level3_synonym_magic_by_keyword,
             keyword_meaning="All keywords have been fully explored.",
             source_sentences=[],
             current_level=updated_state.get("current_level", 21),
@@ -766,6 +826,10 @@ async def continue_conversation(req: ContinueRequest):
         answer=answer,
         question_variants=question_variants,
         keywords=session.keywords if hasattr(session, 'keywords') and session.keywords else [],
+        level2_synonyms=level2_synonyms,
+        level2_synonyms_by_keyword=level2_synonyms_by_keyword,
+        level3_synonym_magic_pairs=level3_synonym_magic_pairs,
+        level3_synonym_magic_by_keyword=level3_synonym_magic_by_keyword,
         keyword_meaning=keyword_meaning,
         source_sentences=source_sentences,
         current_level=level_used,
