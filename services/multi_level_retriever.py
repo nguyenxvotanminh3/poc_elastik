@@ -326,7 +326,18 @@ class MultiLevelRetriever:
         synonym_terms = self._get_all_synonym_terms()
         if not synonym_terms:
             return [], current_offset, True
+        
+        # OPTIMIZATION: Limit combinations to avoid exponential explosion
+        # Use only top synonyms and smaller combo sizes
+        max_terms = min(len(synonym_terms), 6)  # Max 6 terms instead of all
+        synonym_terms = synonym_terms[:max_terms]
+        
         combos = generate_keyword_combinations(synonym_terms)
+        
+        # OPTIMIZATION: Limit max combinations to search
+        max_combos = min(len(combos), 50)  # Only search first 50 combos
+        combos = combos[:max_combos]
+        
         while len(sentences) < limit and current_offset < len(combos):
             combo = combos[current_offset]
             query_text = " ".join(combo)
@@ -358,7 +369,15 @@ class MultiLevelRetriever:
         synonym_terms = self._get_all_synonym_terms()
         if not synonym_terms:
             return [], current_offset, True
+        
+        # OPTIMIZATION: Limit synonym terms and magic words
+        max_synonyms = min(len(synonym_terms), 5)  # Max 5 synonym terms
+        max_magic = min(len(magic_words), 20)      # Max 20 magic words
+        synonym_terms = synonym_terms[:max_synonyms]
+        magic_words = magic_words[:max_magic]
+        
         all_pairs = [(syn, magic) for syn in synonym_terms for magic in magic_words]
+        
         while len(sentences) < limit and current_offset < len(all_pairs):
             synonym, magic = all_pairs[current_offset]
             phrase = f"{synonym} {magic}"
