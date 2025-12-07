@@ -574,7 +574,7 @@ class MultiLevelRetriever:
                 
                 print(f"[Level 3.{current_offset}] Searching exact phrase: '{phrase}'")
                 
-                # Priority 1: EXACT consecutive match (slop=0) - e.g., "heaven is"
+                # Priority 1: EXACT consecutive match only (slop=0) - e.g., "heaven is"
                 exact_results = self._exact_phrase_search(
                     phrase=phrase,
                     limit=100,
@@ -595,28 +595,6 @@ class MultiLevelRetriever:
                         used_texts.add(r["text"])
                     if len(sentences) >= limit:
                         break
-                
-                # Priority 2: Near match (slop=1-2) if we need more
-                if len(sentences) < limit:
-                    near_results = self._exact_phrase_search(
-                        phrase=phrase,
-                        limit=50,
-                        exclude_texts=used_texts,
-                        slop=2
-                    )
-                    
-                    print(f"[Level 3.{current_offset}] Found {len(near_results)} NEAR matches for '{phrase}' (slop=2)")
-                    
-                    for r in near_results:
-                        if r["text"] not in used_texts:
-                            r["magic_word"] = magic
-                            r["sub_level"] = f"3.{current_offset}"
-                            r["match_type"] = "near_phrase"
-                            r["score"] = r.get("score", 1.0) * 2.0  # Boost near matches
-                            sentences.append(r)
-                            used_texts.add(r["text"])
-                        if len(sentences) >= limit:
-                            break
                 
                 # Move to next magic word after processing current one
                 current_offset += 1
@@ -707,7 +685,7 @@ def get_next_batch(
         Level 1: keyword + magic words ("heaven is", "heaven was")
         Level 2: synonyms + magic words ("paradise is", "celestial was")
         Level 3: only keyword ("heaven")
-    
+
     FOR MULTIPLE KEYWORDS:
         Level 0: keyword combinations
         Level 1: keyword + magic words
@@ -762,13 +740,18 @@ def get_next_batch(
             level_offsets["0"] = new_offset
             
         elif current_level == 1:
-            # Level 1: Single keywords only
-            new_sents, new_offset, exhausted = retriever.fetch_level1_sentences(
+            # Level 1: Keyword + magic words first (strict phrase priority)
+            new_sents, new_offset, exhausted, magic_word = retriever.fetch_level3_sentences(
                 offset=level_offsets.get("1", 0),
                 limit=remaining,
-                used_texts=used_texts
+                used_texts=used_texts,
+                single_keyword_mode=is_single_keyword
             )
             level_offsets["1"] = new_offset
+
+            # Track current magic word being explored (useful for UI/debug)
+            if magic_word:
+                level_offsets["1_magic_word"] = magic_word
             
         elif current_level == 2:
             # Level 2: For single keyword = synonyms + magic words
@@ -797,18 +780,13 @@ def get_next_batch(
                 level_offsets["2"] = [k_off, s_off]
             
         elif current_level == 3:
-            # Level 3: Keyword + Magic words (e.g., "heaven is", "heaven was")
-            new_sents, new_offset, exhausted, magic_word = retriever.fetch_level3_sentences(
+            # Level 3: Fallback to single keyword search (no magic words)
+            new_sents, new_offset, exhausted = retriever.fetch_level1_sentences(
                 offset=level_offsets.get("3", 0),
                 limit=remaining,
-                used_texts=used_texts,
-                single_keyword_mode=is_single_keyword
+                used_texts=used_texts
             )
             level_offsets["3"] = new_offset
-            
-            # Store current magic word for display
-            if magic_word:
-                level_offsets["3_magic_word"] = magic_word
         
         else:
             break
