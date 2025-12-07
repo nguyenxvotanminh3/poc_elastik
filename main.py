@@ -520,14 +520,14 @@ async def ask(req: AskRequest):
         # Single keyword query → start at Level 1 for contextual search
         initial_state = {
             "current_level": 1,  # Changed from 3 to 1
-            "level_offsets": {"0": 0, "1": 0, "2": [0, 0], "3": 0},
+            "level_offsets": {"0": 0, "1": 0, "2": 0, "3": 0, "4": 0},
             "used_sentence_ids": []
         }
         print(f"[INFO] Only 1 meaningful word found → Starting from Level 1 (keyword + magic words)")
     else:
         initial_state = {
             "current_level": 0,
-            "level_offsets": {"0": 0, "1": 0, "2": [0, 0], "3": 0},
+            "level_offsets": {"0": 0, "1": 0, "2": 0, "3": 0, "4": 0},
             "used_sentence_ids": []
         }
     
