@@ -1,4 +1,4 @@
-# vector/elastic_client.py
+# vector/elastic_client.pys
 from elasticsearch import Elasticsearch
 from config import settings
 
