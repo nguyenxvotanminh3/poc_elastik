@@ -657,17 +657,15 @@ if st.session_state.conversation_history:
                 
                 # Simplified labels as customer requested
                 if is_primary:
-                    border_color = "#28a745"  # Green for primary
-                    label = "🟢 PRIMARY"
-                    level_display = "Vector"
+                    border_color = "#28a745"  # Green for vector
+                    label = "🟢 Vector"
                 else:
-                    border_color = "#17a2b8"  # Blue for secondary
-                    label = "🔵 SECONDARY"
-                    level_display = f"Level {level}"
+                    border_color = "#17a2b8"  # Blue for level
+                    label = f"🔵 Level {level}"
                 
                 st.markdown(f"""
                 <div class="source-sentence" style="border-left: 4px solid {border_color}; padding-left: 10px; margin-bottom: 10px;">
-                    <strong>{label}</strong> - {level_display} (Score: {score:.2f})<br>
+                    <strong>{label}</strong> (Score: {score:.2f})<br>
                     {text}
                 </div>
                 """, unsafe_allow_html=True)
