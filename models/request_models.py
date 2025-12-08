@@ -131,6 +131,8 @@ class SourceSentence(BaseModel):
     score: float = Field(..., description="Similarity score with the query")
     sentence_index: Optional[int] = Field(None, description="Sentence index in original file")
     magic_word: Optional[str] = Field(None, description="Magic word used for retrieval")
+    is_primary_source: Optional[bool] = Field(False, description="True if from vector/semantic search, False if from keyword search")
+    source_type: Optional[str] = Field(None, description="Human-readable source type label (e.g., 'Vector/Semantic Search' or 'Keyword Match (Level 0)')")
 
     class Config:
         json_schema_extra = {
@@ -138,7 +140,9 @@ class SourceSentence(BaseModel):
                 "text": "The class teacher is responsible for maintaining discipline.",
                 "level": 0,
                 "score": 1.85,
-                "sentence_index": 12
+                "sentence_index": 12,
+                "is_primary_source": True,
+                "source_type": "Vector/Semantic Search"
             }
         }
 

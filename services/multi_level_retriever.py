@@ -30,6 +30,20 @@ from services.keyword_extractor import (
 logger = logging.getLogger(__name__)
 INDEX = settings.ES_INDEX_NAME
 
+# Minimum sentence length to filter out short/meaningless sentences
+MIN_SENTENCE_LENGTH = 20  # At least 20 characters
+
+
+def is_valid_sentence(text: str) -> bool:
+    """Check if sentence is valid (not too short, not just keywords)."""
+    if not text or len(text.strip()) < MIN_SENTENCE_LENGTH:
+        return False
+    # Count words - need at least 4 words for a meaningful sentence
+    words = text.strip().split()
+    if len(words) < 4:
+        return False
+    return True
+
 
 def get_pure_semantic_search(
     query: str,
@@ -64,7 +78,7 @@ def get_pure_semantic_search(
     
     # Pure vector search - NO text filtering, just cosine similarity
     body = {
-        "size": limit * 2,  # Get more, then filter
+        "size": limit * 5,  # Get more to account for filtering short sentences
         "query": {
             "script_score": {
                 "query": {
@@ -90,6 +104,10 @@ def get_pure_semantic_search(
             src = hit["_source"]
             text = src["text"]
             
+            # Skip short/invalid sentences
+            if not is_valid_sentence(text):
+                continue
+            
             if text in seen_texts:
                 continue
             if exclude_texts and text in exclude_texts:
@@ -98,7 +116,7 @@ def get_pure_semantic_search(
             seen_texts.add(text)
             results.append({
                 "text": text,
-                "level": src.get("level", 0),
+                "level": 0,  # Use 0 for semantic search (source_type will show "Vector/Semantic Search")
                 "score": hit.get("_score", 1.0),
                 "sentence_index": src.get("sentence_index", 0),
                 "_id": hit["_id"],
@@ -152,7 +170,7 @@ class MultiLevelRetriever:
         else:
             query = phrase_query
 
-        body = {"size": limit, "query": query}
+        body = {"size": limit * 3, "query": query}  # Get more to filter
 
         try:
             resp = es.search(index=INDEX, body=body)
@@ -161,6 +179,9 @@ class MultiLevelRetriever:
             for hit in resp["hits"]["hits"]:
                 src = hit["_source"]
                 text = src["text"]
+                # Skip short/invalid sentences
+                if not is_valid_sentence(text):
+                    continue
                 if text in seen_texts:
                     continue
                 if exclude_texts and text in exclude_texts:
@@ -175,6 +196,8 @@ class MultiLevelRetriever:
                         "_id": hit["_id"],
                     }
                 )
+                if len(results) >= limit:
+                    break
             return results
         except Exception as e:
             logger.error(f"Phrase search error for '{phrase}': {e}")
@@ -236,6 +259,9 @@ class MultiLevelRetriever:
             for hit in resp["hits"]["hits"]:
                 src = hit["_source"]
                 text = src["text"]
+                # Skip short/invalid sentences
+                if not is_valid_sentence(text):
+                    continue
                 if text in seen_texts:
                     continue
                 if exclude_texts and text in exclude_texts:
