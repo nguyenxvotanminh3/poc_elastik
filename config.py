@@ -19,7 +19,8 @@ class Settings(BaseSettings):
 
     EMBEDDING_MODEL: str = "text-embedding-3-small"
     CHAT_MODEL: str = "deepseek-chat"  # or gpt-4o-mini
-    LLM_MAX_TOKENS: int = 2048  # Max tokens for DeepSeek chat completions (configurable)
+    LLM_MAX_CONTEXT: int = 64000  # Max context window for deepseek-chat (input + output)
+    LLM_MAX_TOKENS: int = 8000  # Max output tokens for DeepSeek chat completions
 
     @field_validator("ES_USERNAME", "ES_PASSWORD", "DEEPSEEK_BASE_URL", "OPENAI_API_KEY", mode="before")
     @classmethod
