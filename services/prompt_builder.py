@@ -31,7 +31,17 @@ def build_final_prompt(user_query: str, question_variants: str, keyword_meaning:
         for i, sent in enumerate(keyword_sources, 1):
             keyword_section += f"{i}. {sent['text']}\n"
     
-    prompt = f"""Answer based on sources below.
+    # Use custom_prompt if provided, otherwise use default
+    if custom_prompt:
+        prompt = f"""{custom_prompt}
+
+QUESTION: {user_query}
+
+MEANING: {keyword_meaning}
+
+{vector_section}{keyword_section}"""
+    else:
+        prompt = f"""Answer based on sources below.
 
 QUESTION: {user_query}
 
@@ -52,7 +62,7 @@ def call_llm(prompt: str) -> str:
             model=settings.CHAT_MODEL,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
-            max_tokens=1000
+            max_tokens=settings.LLM_MAX_TOKENS  # Use config value (8000)
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
