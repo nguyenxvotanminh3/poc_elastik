@@ -588,18 +588,31 @@ if st.session_state.conversation_history:
         level3_pairs = result.get("level3_synonym_magic_pairs", [])
         level3_by_kw = result.get("level3_synonym_magic_by_keyword", [])
 
-        # Level 0 / Level 1: show original keywords as their "synonym" reference
+        # Level 0: show keyword combinations (all keywords together, then smaller combos)
         st.markdown("### 🔁 Level 0 (keyword combination)")
         if keywords:
-            kw_html = " ".join([
-                f'<span style="background-color: #e3f2fd; color: #1976d2; padding: 5px 12px; border-radius: 15px; margin: 3px; display: inline-block; font-weight: 500;">{kw}</span>'
-                for kw in keywords
-            ])
-            st.markdown(kw_html, unsafe_allow_html=True)
+            # Generate combinations from full to smallest
+            from itertools import combinations
+            combos = []
+            n = len(keywords)
+            for size in range(n, 1, -1):  # From full length down to 2 keywords
+                for combo in combinations(keywords, size):
+                    combos.append(" ".join(combo))
+            
+            if combos:
+                combo_html = " ".join([
+                    f'<span style="background-color: #e3f2fd; color: #1976d2; padding: 5px 12px; border-radius: 15px; margin: 3px; display: inline-block; font-weight: 500;">{combo}</span>'
+                    for combo in combos[:10]  # Show first 10 combinations
+                ])
+                st.markdown(combo_html, unsafe_allow_html=True)
+                if len(combos) > 10:
+                    st.caption(f"... and {len(combos) - 10} more combinations")
+            else:
+                st.info("No combinations available (need at least 2 keywords)")
         else:
             st.info("No keywords available")
 
-        st.markdown("### 🔁 Level 1 (Keywords + magical words)")
+        st.markdown("### 🔁 Level 1 (Single keywords)")
         if keywords:
             kw_html = " ".join([
                 f'<span style="background-color: #e3f2fd; color: #1976d2; padding: 5px 12px; border-radius: 15px; margin: 3px; display: inline-block; font-weight: 500;">{kw}</span>'
