@@ -86,6 +86,10 @@ def is_duplicate(
         # Check similarity only for close-length texts
         similarity = calculate_similarity(text, seen_text)
         if similarity >= similarity_threshold:
+            import logging
+            logger = logging.getLogger(__name__)
+            if "wakened" in text or "waked" in text or "wakened" in seen_text or "waked" in seen_text:
+                logger.warning(f"[is_duplicate] MATCH FOUND: {similarity:.4f} >= {similarity_threshold} | New: '{text[:60]}...' | Seen: '{seen_text[:60]}...'")
             return True
     
     return False
@@ -117,6 +121,7 @@ def deduplicate_sentences(
     
     seen = set(existing_texts) if existing_texts else set()
     unique = []
+    removed = []
     
     for sent in sentences:
         text = sent.get("text", "")
@@ -127,6 +132,13 @@ def deduplicate_sentences(
         if not is_duplicate(text, seen, similarity_threshold=similarity_threshold):
             seen.add(text)
             unique.append(sent)
+        else:
+            removed.append(text[:60] + "...")
+    
+    if removed:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"[deduplicate_sentences] Removed {len(removed)} duplicates: {removed}")
     
     return unique, seen
 
