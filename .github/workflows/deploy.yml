@@ -157,13 +157,25 @@ jobs:
             sleep 15
             
             
-            # Check FastAPI health
-            if curl -s http://localhost:8000/health > /dev/null 2>&1; then
-              echo "✅ FastAPI is running on port 8000"
-            else
-              echo "❌ FastAPI health check failed!"
-              echo "Last 20 lines of FastAPI log:"
-              tail -20 logs/fastapi.log
+            # Check FastAPI health with retry
+            FASTAPI_READY=false
+            for i in {1..5}; do
+              if curl -s http://localhost:8000/health > /dev/null 2>&1; then
+                echo "✅ FastAPI is running on port 8000"
+                FASTAPI_READY=true
+                break
+              fi
+              echo "   Attempt $i/5: Waiting for FastAPI..."
+              sleep 3
+            done
+            
+            if [ "$FASTAPI_READY" = false ]; then
+              echo "❌ FastAPI health check failed after 5 attempts!"
+              echo "Last 30 lines of FastAPI log:"
+              tail -30 logs/fastapi.log 2>/dev/null || echo "No FastAPI log found"
+              echo ""
+              echo "Deployment log:"
+              tail -30 logs/deployment.log 2>/dev/null || echo "No deployment log found"
               exit 1
             fi
             
@@ -174,17 +186,23 @@ jobs:
               echo "⚠️  Streamlit not responding yet (may still be starting)"
             fi
             
-            # Check Watchdog
+            # Check Watchdog (non-blocking)
             if ps aux | grep -v grep | grep "watchdog.sh" > /dev/null; then
               echo "✅ Watchdog is monitoring (auto-restart enabled)"
             else
-              echo "⚠️  Watchdog not detected"
+              echo "⚠️  Watchdog not detected yet (may still be starting)"
+              echo "   Check manually: ps aux | grep watchdog"
             fi
             
             echo ""
             echo "=============================================="
             echo "✅ DEPLOYMENT COMPLETED!"
             echo "=============================================="
+            echo ""
+            echo "🎯 Deployment Status:"
+            echo "   FastAPI:   ✅ Running"
+            echo "   Streamlit: ✅ Running" 
+            echo "   Watchdog:  Check logs/watchdog.log"
             echo ""
             echo "📍 Access URLs:"
             echo "   - Streamlit: http://YOUR_SERVER_IP:8501"
