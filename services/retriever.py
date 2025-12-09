@@ -343,10 +343,10 @@ def get_sentences_by_level(
     unique = []
     for h in hits:
         t = h["text"]
-        # Check with similarity-based deduplication (90% threshold)
-        if is_duplicate(t, seen, similarity_threshold=0.90):
+        # STRICT: Check with 100% exact match only
+        if is_duplicate(t, seen):
             continue
-        if exclude_texts and is_duplicate(t, exclude_texts, similarity_threshold=0.90):
+        if exclude_texts and is_duplicate(t, exclude_texts):
             continue
         seen.add(t)
         unique.append(h)

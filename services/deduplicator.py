@@ -1,113 +1,84 @@
 # services/deduplicator.py
 """
-Advanced Deduplication Module
-Handles near-duplicate detection with normalization and similarity checking
+STRICT Deduplication Module
+Only allows 100% exact matches - any character difference = duplicate removal
+No normalization, no similarity checking - pure exact string comparison
 """
-import re
 from typing import Set, List, Dict, Any
-from difflib import SequenceMatcher
 
 
 def normalize_text(text: str) -> str:
     """
-    Normalize text for comparison by:
-    - Converting to lowercase
-    - Removing extra whitespace
-    - Removing punctuation (keep only alphanumeric and spaces)
-    - Stripping leading/trailing spaces
+    DEPRECATED: No longer used in strict mode.
+    Returns text as-is without any normalization.
     """
-    # Lowercase
-    text = text.lower()
-    # Remove punctuation except spaces
-    text = re.sub(r'[^\w\s]', '', text)
-    # Normalize whitespace
-    text = ' '.join(text.split())
-    return text.strip()
+    return text
 
 
 def get_text_fingerprint(text: str, first_n_words: int = 5) -> str:
     """
-    Get fingerprint of text using first N words after normalization.
-    This helps catch duplicates with minor variations at the end.
+    DEPRECATED: No longer used in strict mode.
+    Returns text as-is.
     """
-    normalized = normalize_text(text)
-    words = normalized.split()[:first_n_words]
-    return ' '.join(words)
+    return text
 
 
 def calculate_similarity(text1: str, text2: str) -> float:
     """
-    Calculate similarity ratio between two texts (0.0 to 1.0).
-    Uses SequenceMatcher for fuzzy matching.
+    STRICT MODE: Only returns 1.0 (100%) if texts are EXACTLY identical.
+    Any difference in character, case, space, punctuation = 0.0
     """
-    norm1 = normalize_text(text1)
-    norm2 = normalize_text(text2)
-    return SequenceMatcher(None, norm1, norm2).ratio()
+    return 1.0 if text1 == text2 else 0.0
 
 
 def is_duplicate(
     text: str, 
     seen_texts: Set[str],
-    similarity_threshold: float = 0.90,
-    fingerprint_match: bool = True
+    similarity_threshold: float = 1.0,  # STRICT: Always 100%
+    fingerprint_match: bool = False  # STRICT: Disabled
 ) -> bool:
     """
-    Check if text is a duplicate of any text in seen_texts.
+    STRICT MODE: Check if text is 100% exact match with any seen text.
     
-    Uses two-stage approach:
-    1. Fast fingerprint check (first 5 words)
-    2. Full similarity check if needed
+    Any character difference (case, space, punctuation) = NOT a duplicate.
+    Only EXACTLY identical strings are considered duplicates.
     
     Args:
         text: Text to check
         seen_texts: Set of previously seen texts
-        similarity_threshold: Minimum similarity to consider duplicate (0.90 = 90%)
-        fingerprint_match: Use fast fingerprint matching
+        similarity_threshold: IGNORED (always 100%)
+        fingerprint_match: IGNORED (disabled)
         
     Returns:
-        True if duplicate detected
+        True only if exact match found
     """
     if not text or not seen_texts:
         return False
     
-    # Stage 1: Fast exact match
-    if text in seen_texts:
-        return True
-    
-    # Stage 2: Fast fingerprint match (first 5 words)
-    if fingerprint_match:
-        fingerprint = get_text_fingerprint(text)
-        for seen in seen_texts:
-            if get_text_fingerprint(seen) == fingerprint:
-                return True
-    
-    # Stage 3: Full similarity check (slower, only for close matches)
-    normalized = normalize_text(text)
-    for seen in seen_texts:
-        similarity = calculate_similarity(text, seen)
-        if similarity >= similarity_threshold:
-            return True
-    
-    return False
+    # STRICT: Only exact string match
+    return text in seen_texts
 
 
 def deduplicate_sentences(
     sentences: List[Dict[str, Any]],
     existing_texts: Set[str] = None,
-    similarity_threshold: float = 0.90,
-    use_fingerprint: bool = True
+    similarity_threshold: float = 1.0,  # STRICT: Always 100%
+    use_fingerprint: bool = False  # STRICT: Disabled
 ) -> List[Dict[str, Any]]:
     """
-    Remove duplicate sentences from a list, considering both exact and near-duplicates.
+    STRICT MODE: Remove sentences that are not 100% exactly identical.
+    
+    Even 1 character difference (case, space, punctuation) = keep as unique.
+    Only EXACTLY identical strings are removed.
     
     Args:
         sentences: List of sentence dicts with 'text' field
         existing_texts: Set of texts already seen (to exclude)
-        similarity_threshold: Similarity ratio to consider duplicate (0.90 = 90%)
-        use_fingerprint: Use fingerprint matching for speed
+        similarity_threshold: IGNORED (always 100%)
+        use_fingerprint: IGNORED (disabled)
         
     Returns:
-        Deduplicated list of sentences
+        List with only 100% exact duplicates removed
     """
     if not sentences:
         return []
@@ -120,8 +91,8 @@ def deduplicate_sentences(
         if not text:
             continue
             
-        # Check for duplicates using advanced matching
-        if not is_duplicate(text, seen, similarity_threshold, use_fingerprint):
+        # STRICT: Only exact string match checking
+        if text not in seen:
             seen.add(text)
             unique.append(sent)
     
@@ -130,19 +101,7 @@ def deduplicate_sentences(
 
 def get_unique_key(text: str) -> str:
     """
-    Get a unique key for a text that captures its essence.
-    Used for fast deduplication in sets.
-    
-    Combines:
-    - Normalized text (for case/punctuation variations)
-    - First 5 words (for longer texts with minor ending differences)
+    STRICT MODE: Returns text as-is (no normalization).
+    Each character matters - even case and spaces.
     """
-    normalized = normalize_text(text)
-    fingerprint = get_text_fingerprint(text)
-    
-    # For short texts (< 10 words), use full normalized text
-    if len(normalized.split()) < 10:
-        return normalized
-    
-    # For longer texts, use fingerprint to catch variations
-    return fingerprint
+    return text

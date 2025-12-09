@@ -114,10 +114,10 @@ def get_pure_semantic_search(
             if not is_valid_sentence(text):
                 continue
             
-            # Advanced duplicate detection (handles near-duplicates)
-            if is_duplicate(text, seen_texts, similarity_threshold=0.90):
+            # STRICT: Exact match duplicate detection only
+            if is_duplicate(text, seen_texts):
                 continue
-            if exclude_texts and is_duplicate(text, exclude_texts, similarity_threshold=0.90):
+            if exclude_texts and is_duplicate(text, exclude_texts):
                 continue
                 
             seen_texts.add(text)
@@ -189,10 +189,10 @@ class MultiLevelRetriever:
                 # Skip short/invalid sentences
                 if not is_valid_sentence(text):
                     continue
-                # Advanced duplicate detection
-                if is_duplicate(text, seen_texts, similarity_threshold=0.90):
+                # STRICT: Exact match duplicate detection only
+                if is_duplicate(text, seen_texts):
                     continue
-                if exclude_texts and is_duplicate(text, exclude_texts, similarity_threshold=0.90):
+                if exclude_texts and is_duplicate(text, exclude_texts):
                     continue
                 seen_texts.add(text)
                 results.append(
@@ -270,10 +270,10 @@ class MultiLevelRetriever:
                 # Skip short/invalid sentences
                 if not is_valid_sentence(text):
                     continue
-                # Advanced duplicate detection
-                if is_duplicate(text, seen_texts, similarity_threshold=0.90):
+                # STRICT: Exact match duplicate detection only
+                if is_duplicate(text, seen_texts):
                     continue
-                if exclude_texts and is_duplicate(text, exclude_texts, similarity_threshold=0.90):
+                if exclude_texts and is_duplicate(text, exclude_texts):
                     continue
                 if require_all_words:
                     query_words = query_text.lower().split()
