@@ -315,7 +315,7 @@ class MultiLevelRetriever:
             self._synonym_terms = deduped
         return self._synonym_terms
 
-    def fetch_level0_sentences(self, offset: int, limit: int, used_texts: Set[str]) -> Tuple[List[Dict[str, Any]], int, bool]:
+    def fetch_level0_sentences(self, offset: int, limit: int, used_texts: Set[str]) -> Tuple[List[Dict[str, Any]], int, bool, Set[str]]:
         logger.info(f"[Level 0] offset={offset} limit={limit} used={len(used_texts)}")
         sentences: List[Dict[str, Any]] = []
         current_offset = offset
@@ -359,7 +359,7 @@ class MultiLevelRetriever:
         # CRITICAL: Batch deduplicate at end (faster than checking each item)
         sentences, used_texts = deduplicate_sentences(sentences, existing_texts=used_texts, similarity_threshold=0.95)
         
-        return sentences, current_offset, exhausted
+        return sentences, current_offset, exhausted, used_texts
 
     def fetch_level1_keyword_magic(
         self,
@@ -368,7 +368,7 @@ class MultiLevelRetriever:
         used_texts: Set[str],
         sentences_per_pair: int = 3,
         single_keyword_mode: bool = False,
-    ) -> Tuple[List[Dict[str, Any]], int, bool, Optional[str]]:
+    ) -> Tuple[List[Dict[str, Any]], int, bool, Optional[str], Set[str]]:
         sentences: List[Dict[str, Any]] = []
         current_offset = offset
         magic_words = get_magical_words_for_level3()
@@ -450,14 +450,14 @@ class MultiLevelRetriever:
         # CRITICAL: Batch deduplicate at end (faster than checking each item)
         # Log before and after for debugging
         logger.info(f"[Level 1] Before batch dedup: {len(sentences)} sentences, used_texts has {len(used_texts)} items")
-        sentences = deduplicate_sentences(sentences, existing_texts=used_texts, similarity_threshold=0.95)
+        sentences, used_texts = deduplicate_sentences(sentences, existing_texts=used_texts, similarity_threshold=0.95)
         logger.info(f"[Level 1] After batch dedup: {len(sentences)} sentences")
         
-        return sentences, current_offset, exhausted, current_magic_word
+        return sentences, current_offset, exhausted, current_magic_word, used_texts
 
     def fetch_level2_synonym_combinations(
         self, offset: int, limit: int, used_texts: Set[str]
-    ) -> Tuple[List[Dict[str, Any]], int, bool]:
+    ) -> Tuple[List[Dict[str, Any]], int, bool, Set[str]]:
         sentences: List[Dict[str, Any]] = []
         current_offset = offset
         synonym_terms = self._get_all_synonym_terms()
@@ -498,13 +498,13 @@ class MultiLevelRetriever:
         exhausted = current_offset >= len(combos)
         
         # CRITICAL: Batch deduplicate at end (faster than checking each item)
-        sentences = deduplicate_sentences(sentences, existing_texts=used_texts, similarity_threshold=0.95)
+        sentences, used_texts = deduplicate_sentences(sentences, existing_texts=used_texts, similarity_threshold=0.95)
         
-        return sentences, current_offset, exhausted
+        return sentences, current_offset, exhausted, used_texts
 
     def fetch_level3_synonyms_with_magic(
         self, offset: int, limit: int, used_texts: Set[str]
-    ) -> Tuple[List[Dict[str, Any]], int, bool]:
+    ) -> Tuple[List[Dict[str, Any]], int, bool, Set[str]]:
         sentences: List[Dict[str, Any]] = []
         current_offset = offset
         magic_words = get_magical_words_for_level3()
@@ -542,12 +542,12 @@ class MultiLevelRetriever:
             current_offset += 1
             if len(sentences) >= limit:
                 break
-        exhausted = current_offset >= len(all_pairs)
+        exhausted = current_offset >= len(self.level3_pairs)
         
         # CRITICAL: Batch deduplicate at end (faster than checking each item)
-        sentences = deduplicate_sentences(sentences, existing_texts=used_texts, similarity_threshold=0.95)
+        sentences, used_texts = deduplicate_sentences(sentences, existing_texts=used_texts, similarity_threshold=0.95)
         
-        return sentences, current_offset, exhausted
+        return sentences, current_offset, exhausted, used_texts
 
     def fetch_level1_sentences(
         self,
@@ -555,7 +555,7 @@ class MultiLevelRetriever:
         limit: int,
         used_texts: Set[str],
         sentences_per_keyword: int = 50,
-    ) -> Tuple[List[Dict[str, Any]], int, bool]:
+    ) -> Tuple[List[Dict[str, Any]], int, bool, Set[str]]:
         """Fallback keyword-only search (not used in main 0-4 flow)."""
         sentences: List[Dict[str, Any]] = []
         current_offset = offset
@@ -583,7 +583,7 @@ class MultiLevelRetriever:
         # CRITICAL: Batch deduplicate at end (faster than checking each item)
         sentences, used_texts = deduplicate_sentences(sentences, existing_texts=used_texts, similarity_threshold=0.95)
         
-        return sentences, current_offset, exhausted
+        return sentences, current_offset, exhausted, used_texts
 
 
 def get_next_batch(
@@ -641,7 +641,7 @@ def get_next_batch(
             if is_single_keyword:
                 current_level = 1
                 continue
-            new_sents, new_offset, exhausted = retriever.fetch_level0_sentences(
+            new_sents, new_offset, exhausted, used_texts = retriever.fetch_level0_sentences(
                 offset=level_offsets.get("0", 0),
                 limit=remaining,
                 used_texts=used_texts,
@@ -649,7 +649,7 @@ def get_next_batch(
             level_offsets["0"] = new_offset
 
         elif current_level == 1:
-            new_sents, new_offset, exhausted, magic_word = retriever.fetch_level1_keyword_magic(
+            new_sents, new_offset, exhausted, magic_word, used_texts = retriever.fetch_level1_keyword_magic(
                 offset=level_offsets.get("1", 0),
                 limit=remaining,
                 used_texts=used_texts,
@@ -660,7 +660,7 @@ def get_next_batch(
                 level_offsets["1_magic_word"] = magic_word
 
         elif current_level == 2:
-            new_sents, new_offset, exhausted = retriever.fetch_level2_synonym_combinations(
+            new_sents, new_offset, exhausted, used_texts = retriever.fetch_level2_synonym_combinations(
                 offset=level_offsets.get("2", 0),
                 limit=remaining,
                 used_texts=used_texts,
@@ -668,7 +668,7 @@ def get_next_batch(
             level_offsets["2"] = new_offset
 
         elif current_level == 3:
-            new_sents, new_offset, exhausted = retriever.fetch_level3_synonyms_with_magic(
+            new_sents, new_offset, exhausted, used_texts = retriever.fetch_level3_synonyms_with_magic(
                 offset=level_offsets.get("3", 0),
                 limit=remaining,
                 used_texts=used_texts,
