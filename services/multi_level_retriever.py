@@ -357,7 +357,7 @@ class MultiLevelRetriever:
         exhausted = current_offset >= len(self.level0_combinations) and len(sentences) < limit // 2
         
         # CRITICAL: Batch deduplicate at end (faster than checking each item)
-        sentences = deduplicate_sentences(sentences, existing_texts=used_texts, similarity_threshold=0.95)
+        sentences, used_texts = deduplicate_sentences(sentences, existing_texts=used_texts, similarity_threshold=0.95)
         
         return sentences, current_offset, exhausted
 
@@ -432,6 +432,8 @@ class MultiLevelRetriever:
                             r["keyword_used"] = keyword
                             sentences.append(r)
                             used_texts.add(r["text"])
+                        else:
+                            logger.debug(f"[Level 1] Skipped duplicate: '{r['text'][:60]}...'")
                         if len(sentences) >= limit:
                             break
                     keyword_index += 1
@@ -446,7 +448,10 @@ class MultiLevelRetriever:
         )
         
         # CRITICAL: Batch deduplicate at end (faster than checking each item)
+        # Log before and after for debugging
+        logger.info(f"[Level 1] Before batch dedup: {len(sentences)} sentences, used_texts has {len(used_texts)} items")
         sentences = deduplicate_sentences(sentences, existing_texts=used_texts, similarity_threshold=0.95)
+        logger.info(f"[Level 1] After batch dedup: {len(sentences)} sentences")
         
         return sentences, current_offset, exhausted, current_magic_word
 
@@ -573,10 +578,10 @@ class MultiLevelRetriever:
                 if len(sentences) >= limit:
                     break
             current_offset += 1
-        exhausted = current_offset >= len(self.level1_keywords)
+        exhausted = current_offset >= len(self.level1_synonyms)
         
         # CRITICAL: Batch deduplicate at end (faster than checking each item)
-        sentences = deduplicate_sentences(sentences, existing_texts=used_texts, similarity_threshold=0.95)
+        sentences, used_texts = deduplicate_sentences(sentences, existing_texts=used_texts, similarity_threshold=0.95)
         
         return sentences, current_offset, exhausted
 
@@ -731,21 +736,8 @@ def get_next_batch(
 
     # CRITICAL: Apply fuzzy deduplication to final results (95% similarity)
     # This catches near-duplicates like "waked" vs "wakened"
-    # IMPORTANT: Use used_texts (from session) to avoid re-returning previously seen items
-    seen_in_final = set(used_texts) if used_texts else set()
-    deduplicated_final = []
-    removed_count = 0
-    
-    for sent in final_results:
-        text = sent.get("text", "")
-        if text:
-            # Use is_duplicate with 95% threshold to catch near-duplicates
-            if is_duplicate(text, seen_in_final, similarity_threshold=0.95):
-                removed_count += 1
-                logger.warning(f"[Dedup] Removed near-duplicate #{removed_count}: '{text[:80]}...'")
-            else:
-                seen_in_final.add(text)
-                deduplicated_final.append(sent)
+    deduplicated_final, final_seen_texts = deduplicate_sentences(final_results, existing_texts=used_texts, similarity_threshold=0.95)
+    removed_count = len(final_results) - len(deduplicated_final)
     
     if removed_count > 0:
         logger.warning(f"[Dedup] Final results: {len(final_results)} -> {len(deduplicated_final)} (removed {removed_count} near-duplicates)")

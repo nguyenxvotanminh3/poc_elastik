@@ -4,7 +4,7 @@ STRICT Deduplication Module with High-Similarity Detection
 - Removes 100% exact duplicates
 - Also removes near-duplicates (>95% similar) to catch variants like "waked" vs "wakened"
 """
-from typing import Set, List, Dict, Any
+from typing import Set, List, Dict, Any, Tuple
 from difflib import SequenceMatcher
 
 
@@ -96,7 +96,7 @@ def deduplicate_sentences(
     existing_texts: Set[str] = None,
     similarity_threshold: float = 0.95,  # Default 95% similarity
     use_fingerprint: bool = False  # STRICT: Disabled
-) -> List[Dict[str, Any]]:
+) -> Tuple[List[Dict[str, Any]], Set[str]]:
     """
     Remove duplicate and near-duplicate sentences.
     
@@ -110,10 +110,10 @@ def deduplicate_sentences(
         use_fingerprint: IGNORED (disabled)
         
     Returns:
-        List with exact and near-duplicates removed
+        Tuple of (List with exact and near-duplicates removed, Updated set of all seen texts)
     """
     if not sentences:
-        return []
+        return [], existing_texts if existing_texts else set()
     
     seen = set(existing_texts) if existing_texts else set()
     unique = []
@@ -128,7 +128,7 @@ def deduplicate_sentences(
             seen.add(text)
             unique.append(sent)
     
-    return unique
+    return unique, seen
 
 
 def get_unique_key(text: str) -> str:
