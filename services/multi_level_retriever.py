@@ -743,6 +743,10 @@ def get_next_batch(
     deduplicated_final, final_seen_texts = deduplicate_sentences(final_results, existing_texts=used_texts, similarity_threshold=0.95)
     removed_count = len(final_results) - len(deduplicated_final)
     
+    logger.warning(f"[get_next_batch] FINAL DEDUP INPUT: {len(final_results)} sentences, used_texts has {len(used_texts)} items")
+    for i, sent in enumerate(final_results[:3]):
+        logger.warning(f"[get_next_batch]   #{i}: '{sent.get('text', '')[:80]}...'")
+    
     if removed_count > 0:
         logger.warning(f"[Dedup] Final results: {len(final_results)} -> {len(deduplicated_final)} (removed {removed_count} near-duplicates)")
     else:
