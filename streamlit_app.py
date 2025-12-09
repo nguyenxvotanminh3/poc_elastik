@@ -7,10 +7,12 @@ A user-friendly web interface to interact with the API.
 import streamlit as st
 import requests
 import json
+import os
 from typing import Optional, List
 
 # Configuration
-API_BASE_URL = "http://localhost:8000"
+# Use environment variable for production, fallback to localhost for local dev
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
 # Page configuration
 st.set_page_config(
