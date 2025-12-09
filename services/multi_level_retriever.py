@@ -702,10 +702,24 @@ def get_next_batch(
     # IMPORTANT: Put semantic results FIRST (on top), keyword results after
     final_results = semantic_results + sentences
 
+    # CRITICAL: Apply strict deduplication to final results
+    # This catches any duplicates that might slip through from different sources
+    seen_in_final = set()
+    deduplicated_final = []
+    for sent in final_results:
+        text = sent.get("text", "")
+        if text and text not in seen_in_final:
+            seen_in_final.add(text)
+            deduplicated_final.append(sent)
+        else:
+            logger.info(f"[Dedup] Removed duplicate in final results: '{text[:60]}...'")
+    
+    logger.info(f"[Dedup] Final results: {len(final_results)} -> {len(deduplicated_final)} (removed {len(final_results) - len(deduplicated_final)} duplicates)")
+
     updated_state = {
         "current_level": current_level,
         "level_offsets": level_offsets,
         "used_sentence_ids": list(used_texts),
     }
 
-    return final_results, updated_state, level_used
+    return deduplicated_final, updated_state, level_used
