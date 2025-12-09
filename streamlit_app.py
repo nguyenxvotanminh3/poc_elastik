@@ -673,6 +673,84 @@ if st.session_state.conversation_history:
         level3_pairs = result.get("level3_synonym_magic_pairs", [])
         level3_by_kw = result.get("level3_synonym_magic_by_keyword", [])
 
+        # === Level 0.0: Biblical Parallels ===
+        st.markdown("### 📖 Level 0.0 (Biblical Parallels)")
+        biblical_parallels = result.get("biblical_parallels", {})
+        biblical_sources = result.get("biblical_sources", [])
+        
+        if biblical_parallels:
+            # Bible Stories / Characters
+            stories = biblical_parallels.get("stories_characters", [])
+            if stories:
+                st.markdown("**📜 Bible Stories / Characters (search terms):**")
+                stories_html = " ".join([
+                    f'<span style="background-color: #fce4ec; color: #c2185b; padding: 5px 12px; border-radius: 15px; margin: 3px; display: inline-block; font-weight: 500;">📜 {story}</span>'
+                    for story in stories
+                ])
+                st.markdown(stories_html, unsafe_allow_html=True)
+            
+            # Scripture References
+            refs = biblical_parallels.get("scripture_references", [])
+            if refs:
+                st.markdown("**📖 Scripture References (search terms):**")
+                refs_html = " ".join([
+                    f'<span style="background-color: #e8f5e9; color: #2e7d32; padding: 5px 12px; border-radius: 15px; margin: 3px; display: inline-block; font-weight: 500;">📖 {ref}</span>'
+                    for ref in refs
+                ])
+                st.markdown(refs_html, unsafe_allow_html=True)
+            
+            # Biblical Metaphors
+            metaphors = biblical_parallels.get("biblical_metaphors", [])
+            if metaphors:
+                st.markdown("**🔮 Biblical Metaphors (search terms):**")
+                metaphors_html = " ".join([
+                    f'<span style="background-color: #fff3e0; color: #e65100; padding: 5px 12px; border-radius: 15px; margin: 3px; display: inline-block; font-weight: 500;">🔮 {m}</span>'
+                    for m in metaphors
+                ])
+                st.markdown(metaphors_html, unsafe_allow_html=True)
+            
+            # Keywords (from biblical analysis)
+            bp_keywords = biblical_parallels.get("keywords", [])
+            if bp_keywords:
+                st.markdown("**🔑 Biblical Keywords (search terms):**")
+                bp_kw_html = " ".join([
+                    f'<span style="background-color: #e3f2fd; color: #1565c0; padding: 5px 12px; border-radius: 15px; margin: 3px; display: inline-block; font-weight: 500;">🔑 {kw}</span>'
+                    for kw in bp_keywords
+                ])
+                st.markdown(bp_kw_html, unsafe_allow_html=True)
+            
+            if not stories and not refs and not metaphors and not bp_keywords:
+                st.info("No biblical parallels extracted")
+        else:
+            st.info("No biblical parallels available")
+        
+        # === Level 0.0 Source Sentences ===
+        if biblical_sources:
+            st.markdown(f"**📚 Level 0.0 Source Sentences ({len(biblical_sources)} total):**")
+            
+            # Group by source_type
+            sources_by_type = {}
+            for src in biblical_sources:
+                stype = src.get("source_type", "Unknown")
+                if stype not in sources_by_type:
+                    sources_by_type[stype] = []
+                sources_by_type[stype].append(src)
+            
+            # Display grouped by type with collapsible sections
+            for stype, sentences in sources_by_type.items():
+                with st.expander(f"**{stype}** ({len(sentences)} sentences)", expanded=False):
+                    for i, s in enumerate(sentences, 1):
+                        score = s.get("score", 0)
+                        text = s.get("text", "")
+                        st.markdown(f"""
+                        <div style="background-color: #f8f9fa; padding: 10px; margin: 5px 0; border-radius: 8px; border-left: 3px solid #6c757d;">
+                            <small style="color: #888;">#{i} | Score: {score:.2f}</small><br>
+                            <span style="font-size: 0.95em;">{text}</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+        else:
+            st.caption("No Level 0.0 source sentences found")
+
         # Level 0: show keyword combinations (all keywords together, then smaller combos)
         st.markdown("### 🔁 Level 0 (keyword combination)")
         if keywords:
@@ -752,15 +830,28 @@ if st.session_state.conversation_history:
         # === ALWAYS VISIBLE: Source Sentences ===
         st.markdown("### 📄 Source Sentences")
         sources = result.get("source_sentences", [])
+        # Filter out Level 0.0 sentences (they're shown separately above)
+        sources = [s for s in sources if not (s.get("source_type") or "").startswith("Level 0.0")]
         if sources:
             for src in sources:
                 level = src.get("level", 0)
                 score = src.get("score", 0)
                 text = src.get("text", "")
                 is_primary = src.get("is_primary_source", False)
+                source_type = src.get("source_type", "")
                 
-                # Simplified labels as customer requested
-                if is_primary:
+                # Use source_type if available, otherwise fall back to is_primary logic
+                if source_type:
+                    if "Vector" in source_type or "Semantic" in source_type:
+                        border_color = "#28a745"  # Green for vector/semantic
+                        label = f"🟢 {source_type}"
+                    elif "Keyword" in source_type:
+                        border_color = "#17a2b8"  # Blue for keyword
+                        label = f"🔵 {source_type}"
+                    else:
+                        border_color = "#6c757d"  # Gray for unknown
+                        label = f"⚪ {source_type}"
+                elif is_primary:
                     border_color = "#28a745"  # Green for vector
                     label = "🟢 Vector"
                 else:

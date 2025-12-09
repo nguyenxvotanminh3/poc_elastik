@@ -213,6 +213,14 @@ class AskResponse(BaseModel):
         ...,
         description="Buffer percentage applied"
     )
+    biblical_parallels: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Biblical parallels extracted (Level 0.0): stories, references, metaphors, keywords"
+    )
+    biblical_sources: List[SourceSentence] = Field(
+        default_factory=list,
+        description="Source sentences from Level 0.0 (Biblical Parallels)"
+    )
 
     class Config:
         json_schema_extra = {

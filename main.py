@@ -772,7 +772,9 @@ async def ask(req: AskRequest):
         prompt_used=prompt,
         can_continue=can_continue,
         sentences_retrieved=len(source_sentences),
-        buffer_applied=req.buffer_percentage if req.buffer_percentage else 0
+        buffer_applied=req.buffer_percentage if req.buffer_percentage else 0,
+        biblical_parallels=biblical_parallels,
+        biblical_sources=biblical_parallels_sentences
     )
 
 
