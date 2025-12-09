@@ -123,22 +123,25 @@ def deduplicate_sentences(
     unique = []
     removed = []
     
-    for sent in sentences:
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    for i, sent in enumerate(sentences):
         text = sent.get("text", "")
         if not text:
             continue
-            
+        
         # Check for exact or near-duplicate
         if not is_duplicate(text, seen, similarity_threshold=similarity_threshold):
             seen.add(text)
             unique.append(sent)
+            logger.debug(f"[deduplicate_sentences] #{i}: ADDED: '{text[:60]}...'")
         else:
             removed.append(text[:60] + "...")
+            logger.warning(f"[deduplicate_sentences] #{i}: REMOVED DUPLICATE: '{text[:60]}...' (matches something in seen set of {len(seen)} items)")
     
     if removed:
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.warning(f"[deduplicate_sentences] Removed {len(removed)} duplicates: {removed}")
+        logger.warning(f"[deduplicate_sentences] Removed {len(removed)} duplicates total")
     
     return unique, seen
 
