@@ -702,19 +702,21 @@ def get_next_batch(
     # IMPORTANT: Put semantic results FIRST (on top), keyword results after
     final_results = semantic_results + sentences
 
-    # CRITICAL: Apply strict deduplication to final results
-    # This catches any duplicates that might slip through from different sources
+    # CRITICAL: Apply fuzzy deduplication to final results (95% similarity)
+    # This catches near-duplicates like "waked" vs "wakened"
     seen_in_final = set()
     deduplicated_final = []
     for sent in final_results:
         text = sent.get("text", "")
-        if text and text not in seen_in_final:
-            seen_in_final.add(text)
-            deduplicated_final.append(sent)
-        else:
-            logger.info(f"[Dedup] Removed duplicate in final results: '{text[:60]}...'")
+        if text:
+            # Use is_duplicate with 95% threshold to catch near-duplicates
+            if is_duplicate(text, seen_in_final, similarity_threshold=0.95):
+                logger.info(f"[Dedup] Removed near-duplicate in final results: '{text[:60]}...'")
+            else:
+                seen_in_final.add(text)
+                deduplicated_final.append(sent)
     
-    logger.info(f"[Dedup] Final results: {len(final_results)} -> {len(deduplicated_final)} (removed {len(final_results) - len(deduplicated_final)} duplicates)")
+    logger.info(f"[Dedup] Final results: {len(final_results)} -> {len(deduplicated_final)} (removed {len(final_results) - len(deduplicated_final)} near-duplicates)")
 
     updated_state = {
         "current_level": current_level,
