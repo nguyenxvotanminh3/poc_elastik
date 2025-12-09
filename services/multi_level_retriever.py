@@ -355,6 +355,10 @@ class MultiLevelRetriever:
                 if len(sentences) >= limit:
                     break
         exhausted = current_offset >= len(self.level0_combinations) and len(sentences) < limit // 2
+        
+        # CRITICAL: Batch deduplicate at end (faster than checking each item)
+        sentences = deduplicate_sentences(sentences, existing_texts=used_texts, similarity_threshold=0.95)
+        
         return sentences, current_offset, exhausted
 
     def fetch_level1_keyword_magic(
@@ -440,6 +444,10 @@ class MultiLevelRetriever:
         exhausted = current_offset >= len(self.level3_pairs) or (
             single_keyword_mode and current_offset >= len(magic_words)
         )
+        
+        # CRITICAL: Batch deduplicate at end (faster than checking each item)
+        sentences = deduplicate_sentences(sentences, existing_texts=used_texts, similarity_threshold=0.95)
+        
         return sentences, current_offset, exhausted, current_magic_word
 
     def fetch_level2_synonym_combinations(
@@ -483,6 +491,10 @@ class MultiLevelRetriever:
                     break
             current_offset += 1
         exhausted = current_offset >= len(combos)
+        
+        # CRITICAL: Batch deduplicate at end (faster than checking each item)
+        sentences = deduplicate_sentences(sentences, existing_texts=used_texts, similarity_threshold=0.95)
+        
         return sentences, current_offset, exhausted
 
     def fetch_level3_synonyms_with_magic(
@@ -526,6 +538,10 @@ class MultiLevelRetriever:
             if len(sentences) >= limit:
                 break
         exhausted = current_offset >= len(all_pairs)
+        
+        # CRITICAL: Batch deduplicate at end (faster than checking each item)
+        sentences = deduplicate_sentences(sentences, existing_texts=used_texts, similarity_threshold=0.95)
+        
         return sentences, current_offset, exhausted
 
     def fetch_level1_sentences(
@@ -558,6 +574,10 @@ class MultiLevelRetriever:
                     break
             current_offset += 1
         exhausted = current_offset >= len(self.level1_keywords)
+        
+        # CRITICAL: Batch deduplicate at end (faster than checking each item)
+        sentences = deduplicate_sentences(sentences, existing_texts=used_texts, similarity_threshold=0.95)
+        
         return sentences, current_offset, exhausted
 
 
