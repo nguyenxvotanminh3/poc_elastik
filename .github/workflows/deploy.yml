@@ -110,87 +110,93 @@ jobs:
             fi
             
             # ============================================
-            # 4. SETUP SYSTEMD SERVICES
+            # 4. DEPLOY WITH WATCHDOG AUTO-RESTART
             # ============================================
             echo ""
-            echo ">>> [4/5] Cấu hình systemd services..."
+            echo ">>> [4/5] Deploying with watchdog auto-restart..."
             
-            VENV_PYTHON="$PROJECT_DIR/venv/bin/python"
+            # Stop old services first
+            if [ -f "stop_demo.sh" ]; then
+              chmod +x stop_demo.sh
+              ./stop_demo.sh 2>/dev/null || true
+            else
+              # Manual cleanup
+              pkill -f "watchdog.sh" 2>/dev/null || true
+              pkill -f "uvicorn main:app" 2>/dev/null || true
+              pkill -f "streamlit run" 2>/dev/null || true
+              pkill -f "ngrok http" 2>/dev/null || true
+            fi
             
-            # Tạo service file cho FastAPI (dùng sed để strip leading spaces)
-            cat << 'FASTAPI_EOF' | sed 's/^[[:space:]]*//' | sudo tee /etc/systemd/system/poc-fastapi.service > /dev/null
-            [Unit]
-            Description=POC FastAPI Backend
-            After=network.target
-
-            [Service]
-            Type=simple
-            WorkingDirectory=/srv/poc_elastik
-            Environment=PATH=/srv/poc_elastik/venv/bin:/usr/local/bin:/usr/bin
-            EnvironmentFile=/srv/poc_elastik/.env
-            ExecStart=/srv/poc_elastik/venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000
-            Restart=always
-            RestartSec=3
-
-            [Install]
-            WantedBy=multi-user.target
-            FASTAPI_EOF
+            sleep 2
+            echo "✅ Old services stopped"
             
-            # Tạo service file cho Streamlit
-            cat << 'STREAMLIT_EOF' | sed 's/^[[:space:]]*//' | sudo tee /etc/systemd/system/poc-streamlit.service > /dev/null
-            [Unit]
-            Description=POC Streamlit Frontend
-            After=network.target
-
-            [Service]
-            Type=simple
-            WorkingDirectory=/srv/poc_elastik
-            Environment=PATH=/srv/poc_elastik/venv/bin:/usr/local/bin:/usr/bin
-            EnvironmentFile=/srv/poc_elastik/.env
-            ExecStart=/srv/poc_elastik/venv/bin/python -m streamlit run streamlit_app.py --server.port 8501 --server.address 0.0.0.0 --server.headless true --browser.gatherUsageStats false
-            Restart=always
-            RestartSec=3
-
-            [Install]
-            WantedBy=multi-user.target
-            STREAMLIT_EOF
+            # Make scripts executable
+            chmod +x start_demo.sh
+            chmod +x watchdog.sh
+            chmod +x deploy.sh
             
-            echo "✅ Systemd service files created"
+            # Start services with watchdog
+            ./start_demo.sh
+            
+            echo "✅ Services started with watchdog auto-restart"
             
             # ============================================
-            # 5. RESTART SERVICES
+            # 5. VERIFY DEPLOYMENT
             # ============================================
             echo ""
-            echo ">>> [5/6] Khởi động lại services..."
+            echo ">>> [5/5] Verifying deployment..."
             
-            # Reload systemd và restart services
-            sudo systemctl daemon-reload
-            sudo systemctl enable poc-fastapi poc-streamlit
-            sudo systemctl restart poc-fastapi
-            sudo systemctl restart poc-streamlit
+            # Wait for services to be ready
+            sleep 5
             
-            # Đợi services khởi động
-            sleep 3
             
-            # ============================================
-            # 6. FINISH
-            # ============================================
+            # Check FastAPI health
+            if curl -s http://localhost:8000/health > /dev/null 2>&1; then
+              echo "✅ FastAPI is running on port 8000"
+            else
+              echo "❌ FastAPI health check failed!"
+              echo "Last 20 lines of FastAPI log:"
+              tail -20 logs/fastapi.log
+              exit 1
+            fi
+            
+            # Check Streamlit
+            if curl -s http://localhost:8501 > /dev/null 2>&1; then
+              echo "✅ Streamlit is running on port 8501"
+            else
+              echo "⚠️  Streamlit not responding yet (may still be starting)"
+            fi
+            
+            # Check Watchdog
+            if ps aux | grep -v grep | grep "watchdog.sh" > /dev/null; then
+              echo "✅ Watchdog is monitoring (auto-restart enabled)"
+            else
+              echo "⚠️  Watchdog not detected"
+            fi
+            
             echo ""
             echo "=============================================="
-            echo "✅ DEPLOYMENT SUCCESSFUL!"
+            echo "✅ DEPLOYMENT COMPLETED!"
             echo "=============================================="
             echo ""
-            echo "📍 Services Status:"
-            sudo systemctl status poc-fastapi --no-pager -l || true
+            echo "📍 Access URLs:"
+            echo "   - Streamlit: http://YOUR_SERVER_IP:8501"
+            echo "   - FastAPI:   http://YOUR_SERVER_IP:8000/docs"
+            echo "   - Health:    http://YOUR_SERVER_IP:8000/health"
             echo ""
-            sudo systemctl status poc-streamlit --no-pager -l || true
+            echo "📊 Monitor Logs:"
+            echo "   tail -f $PROJECT_DIR/logs/watchdog.log"
+            echo "   tail -f $PROJECT_DIR/logs/fastapi.log"
+            echo "   tail -f $PROJECT_DIR/logs/streamlit.log"
             echo ""
-            echo "📍 URLs:"
-            echo "   - FastAPI: http://YOUR_SERVER_IP:8000/docs"
-            echo "   - Web App: http://YOUR_SERVER_IP:8501"
+            echo "🔍 Watchdog Features:"
+            echo "   ✓ Monitors every 30 seconds"
+            echo "   ✓ Auto-restarts on crash/hang"
+            echo "   ✓ Auto-restarts on high memory (>80%)"
+            echo "   ✓ Max 5 restarts per hour (prevents loops)"
             echo ""
-            echo "📝 Useful commands:"
-            echo "   sudo systemctl status poc-fastapi"
-            echo "   sudo systemctl status poc-streamlit"
-            echo "   sudo journalctl -u poc-fastapi -f"
-            echo "   sudo journalctl -u poc-streamlit -f"
+            echo "🛠️  Management Commands:"
+            echo "   cd $PROJECT_DIR"
+            echo "   ./stop_demo.sh     # Stop all services"
+            echo "   ./start_demo.sh    # Start with watchdog"
+            echo "=============================================="

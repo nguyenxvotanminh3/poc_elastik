@@ -2,12 +2,18 @@
 # ===========================================
 # DEPLOY SCRIPT - AI Vector Search Demo
 # ===========================================
-# This script starts all services and exposes them via ngrok
-# for client testing.
+# This script deploys the application with auto-restart capabilities
+# using start_demo.sh which includes watchdog monitoring
 
 set -e
 
-PROJECT_DIR="/Users/minknguyen/Desktop/Working/POC/ai-vector-elastic-demo"
+# Detect if running in CI/CD environment
+if [ -n "$GITHUB_WORKSPACE" ]; then
+    PROJECT_DIR="$GITHUB_WORKSPACE"
+else
+    PROJECT_DIR="/srv/poc_elastik"
+fi
+
 cd "$PROJECT_DIR"
 
 echo "=============================================="
@@ -19,12 +25,8 @@ echo ""
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
-
-# Function to check if port is in use
-check_port() {
-    lsof -i:$1 > /dev/null 2>&1
-}
 
 # 1. Check/Start Elasticsearch
 echo -e "${YELLOW}[1/4] Checking Elasticsearch...${NC}"
@@ -41,81 +43,84 @@ else
     echo -e "${GREEN}✅ Elasticsearch started${NC}"
 fi
 
-# 2. Start FastAPI
-echo -e "${YELLOW}[2/4] Starting FastAPI server...${NC}"
-pkill -f "uvicorn main:app" 2>/dev/null || true
-lsof -ti:8000 | xargs kill -9 2>/dev/null || true
-sleep 1
+# 2. Stop existing services
+echo -e "${YELLOW}[2/4] Stopping existing services...${NC}"
+if [ -f "stop_demo.sh" ]; then
+    chmod +x stop_demo.sh
+    ./stop_demo.sh 2>/dev/null || true
+else
+    # Fallback manual cleanup
+    pkill -f "watchdog.sh" 2>/dev/null || true
+    pkill -f "uvicorn main:app" 2>/dev/null || true
+    pkill -f "streamlit run" 2>/dev/null || true
+    pkill -f "ngrok http" 2>/dev/null || true
+fi
+sleep 2
+echo -e "${GREEN}✅ Old services stopped${NC}"
 
-nohup ./venv/bin/python -m uvicorn main:app --port 8000 --host 0.0.0.0 > /tmp/fastapi.log 2>&1 &
-sleep 3
+# 3. Install/Update dependencies
+echo -e "${YELLOW}[3/4] Installing dependencies...${NC}"
+if [ ! -d "venv" ]; then
+    python3 -m venv venv
+fi
+source venv/bin/activate
+pip install -q -r requirements.txt
+echo -e "${GREEN}✅ Dependencies installed${NC}"
+
+# 4. Start all services with watchdog auto-restart
+echo -e "${YELLOW}[4/4] Starting services with auto-restart...${NC}"
+chmod +x start_demo.sh
+chmod +x watchdog.sh
+./start_demo.sh
+
+# Wait for services to be ready
+sleep 5
+
+# Verify services are running
+echo ""
+echo -e "${BLUE}Verifying services...${NC}"
 
 if curl -s http://localhost:8000/health > /dev/null 2>&1; then
     echo -e "${GREEN}✅ FastAPI is running on port 8000${NC}"
 else
-    echo -e "${RED}❌ FastAPI failed to start. Check /tmp/fastapi.log${NC}"
-    exit 1
+    echo -e "${RED}❌ FastAPI not responding. Check logs/fastapi.log${NC}"
 fi
-
-# 3. Start Streamlit
-echo -e "${YELLOW}[3/4] Starting Streamlit...${NC}"
-pkill -f "streamlit run" 2>/dev/null || true
-lsof -ti:8501 | xargs kill -9 2>/dev/null || true
-sleep 1
-
-mkdir -p ~/.streamlit
-echo '[general]
-email = ""' > ~/.streamlit/credentials.toml
-
-nohup ./venv/bin/python -m streamlit run streamlit_app.py --server.port 8501 --server.headless true > /tmp/streamlit.log 2>&1 &
-sleep 3
 
 if curl -s http://localhost:8501 > /dev/null 2>&1; then
     echo -e "${GREEN}✅ Streamlit is running on port 8501${NC}"
 else
-    echo -e "${RED}❌ Streamlit failed to start. Check /tmp/streamlit.log${NC}"
-    exit 1
+    echo -e "${RED}❌ Streamlit not responding. Check logs/streamlit.log${NC}"
 fi
 
-# 4. Check ngrok
-echo -e "${YELLOW}[4/4] Setting up ngrok for public access...${NC}"
-
-if ! command -v ngrok &> /dev/null; then
-    echo "Installing ngrok..."
-    brew install ngrok/ngrok/ngrok 2>/dev/null || {
-        echo -e "${RED}Please install ngrok manually:${NC}"
-        echo "  brew install ngrok/ngrok/ngrok"
-        echo "  OR download from https://ngrok.com/download"
-        echo ""
-        echo -e "${GREEN}Local URLs (for now):${NC}"
-        echo "  Streamlit UI: http://localhost:8501"
-        echo "  API Swagger:  http://localhost:8000/docs"
-        exit 0
-    }
+if ps aux | grep -v grep | grep "watchdog.sh" > /dev/null; then
+    echo -e "${GREEN}✅ Watchdog is monitoring (auto-restart enabled)${NC}"
+else
+    echo -e "${YELLOW}⚠️  Watchdog not detected${NC}"
 fi
-
-# Kill existing ngrok
-pkill -f ngrok 2>/dev/null || true
-sleep 1
 
 echo ""
 echo "=============================================="
-echo -e "${GREEN}   ✅ ALL SERVICES STARTED SUCCESSFULLY!${NC}"
+echo -e "${GREEN}   ✅ DEPLOYMENT COMPLETED!${NC}"
 echo "=============================================="
 echo ""
-echo "📍 LOCAL ACCESS:"
+echo -e "${BLUE}📍 SERVICE URLS:${NC}"
 echo "   Streamlit UI: http://localhost:8501"
 echo "   API Swagger:  http://localhost:8000/docs"
 echo "   API Health:   http://localhost:8000/health"
 echo ""
-echo "🌐 TO SHARE WITH CLIENT:"
-echo "   Run this command in a new terminal:"
+echo -e "${BLUE}📊 LOGS:${NC}"
+echo "   FastAPI:   logs/fastapi.log"
+echo "   Streamlit: logs/streamlit.log"
+echo "   Watchdog:  logs/watchdog.log"
 echo ""
-echo "   ngrok http 8501"
+echo -e "${BLUE}🔍 MONITORING:${NC}"
+echo "   Watch logs:      tail -f logs/watchdog.log"
+echo "   Check status:    curl http://localhost:8000/health"
+echo "   Stop services:   ./stop_demo.sh"
 echo ""
-echo "   This will give you a public URL like:"
-echo "   https://xxxx-xx-xx-xxx-xxx.ngrok-free.app"
-echo ""
-echo "   Share that URL with your client!"
+echo -e "${GREEN}🎉 Watchdog auto-restart is ACTIVE!${NC}"
+echo "   - Monitors every 30 seconds"
+echo "   - Auto-restarts on crash/hang"
+echo "   - Max 5 restarts per hour"
 echo ""
 echo "=============================================="
