@@ -129,12 +129,16 @@ jobs:
               done
             fi
             
-            # FORCE KILL all related processes to ensure clean slate
-            echo "Force killing any remaining processes..."
-            # Use regex brackets to avoid killing the deployment script itself
-            pkill -9 -f "[u]vicorn main:app" 2>/dev/null || true
-            pkill -9 -f "[s]treamlit run" 2>/dev/null || true
-            pkill -9 -f "[w]atchdog.sh" 2>/dev/null || true
+            # Use pgrep and exclude current PID ($$) to prevent self-kill
+            for pattern in "uvicorn main:app" "streamlit run" "watchdog.sh"; do
+              # Find PIDs matching pattern, exclude current shell PID
+              PIDS=$(pgrep -f "$pattern" | grep -v "^$$\$") || true
+              if [ -n "$PIDS" ]; then
+                 echo "Killing $pattern: $PIDS"
+                 kill -9 $PIDS 2>/dev/null || true
+              fi
+            done
+
             # Use lsof instead of fuser (safer, won't kill SSH)
             lsof -ti:8000 | xargs kill -9 2>/dev/null || true
             lsof -ti:8501 | xargs kill -9 2>/dev/null || true

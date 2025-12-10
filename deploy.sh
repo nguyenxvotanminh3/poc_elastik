@@ -49,11 +49,13 @@ if [ -f "stop_demo.sh" ]; then
     chmod +x stop_demo.sh
     ./stop_demo.sh 2>/dev/null || true
 else
-    # Fallback manual cleanup
-    pkill -f "[w]atchdog.sh" 2>/dev/null || true
-    pkill -f "[u]vicorn main:app" 2>/dev/null || true
-    pkill -f "[s]treamlit run" 2>/dev/null || true
-    pkill -f "[n]grok http" 2>/dev/null || true
+    # Safe cleanup excluding current PID 
+    for pattern in "watchdog.sh" "uvicorn main:app" "streamlit run" "ngrok http"; do
+        PIDS=$(pgrep -f "$pattern" | grep -v "^$$\$") || true
+        if [ -n "$PIDS" ]; then
+            kill -9 $PIDS 2>/dev/null || true
+        fi
+    done
 fi
 sleep 2
 echo -e "${GREEN}✅ Old services stopped${NC}"
