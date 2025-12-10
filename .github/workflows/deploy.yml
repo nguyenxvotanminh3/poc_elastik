@@ -132,6 +132,12 @@ jobs:
             sleep 2
             echo "✅ Old services stopped"
             
+            # Clear Python cache to ensure fresh code is loaded
+            echo "Clearing Python cache..."
+            find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+            find . -name "*.pyc" -delete 2>/dev/null || true
+            echo "✅ Python cache cleared"
+            
             # Make scripts executable
             chmod +x start_demo.sh watchdog.sh deploy.sh 2>/dev/null || true
             
