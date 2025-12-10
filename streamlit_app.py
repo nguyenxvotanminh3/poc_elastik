@@ -835,7 +835,7 @@ if st.session_state.conversation_history:
             
             # Display grouped by type with collapsible sections
             for stype, sentences in sources_by_type.items():
-                with st.expander(f"**{stype}** ({len(sentences)} sentences)", expanded=True):
+                with st.expander(f"**{stype}** ({len(sentences)} sentences)", expanded=False):
                     for i, s in enumerate(sentences, 1):
                         score = s.get("score", 0)
                         text = s.get("text", "")
@@ -848,81 +848,83 @@ if st.session_state.conversation_history:
         else:
             st.caption("No Level 0.0 source sentences found")
 
-        # Level 0: show keyword combinations (all keywords together, then smaller combos)
-        st.markdown("### 🔁 Level 0 (keyword combination)")
-        if keywords:
-            # Generate combinations from full to smallest
-            from itertools import combinations
-            combos = []
-            n = len(keywords)
-            for size in range(n, 1, -1):  # From full length down to 2 keywords
-                for combo in combinations(keywords, size):
-                    combos.append(" ".join(combo))
-            
-            if combos:
-                combo_html = " ".join([
-                    f'<span style="background-color: #e3f2fd; color: #1976d2; padding: 5px 12px; border-radius: 15px; margin: 3px; display: inline-block; font-weight: 500;">{combo}</span>'
-                    for combo in combos[:10]  # Show first 10 combinations
-                ])
-                st.markdown(combo_html, unsafe_allow_html=True)
-                if len(combos) > 10:
-                    st.caption(f"... and {len(combos) - 10} more combinations")
+        # === Collapsible Search Logic Section ===
+        with st.expander("🔍 Search Logic & Terms (Levels 0-3)", expanded=False):
+            # Level 0: show keyword combinations (all keywords together, then smaller combos)
+            st.markdown("### 🔁 Level 0 (keyword combination)")
+            if keywords:
+                # Generate combinations from full to smallest
+                from itertools import combinations
+                combos = []
+                n = len(keywords)
+                for size in range(n, 1, -1):  # From full length down to 2 keywords
+                    for combo in combinations(keywords, size):
+                        combos.append(" ".join(combo))
+                
+                if combos:
+                    combo_html = " ".join([
+                        f'<span style="background-color: #e3f2fd; color: #1976d2; padding: 5px 12px; border-radius: 15px; margin: 3px; display: inline-block; font-weight: 500;">{combo}</span>'
+                        for combo in combos[:10]  # Show first 10 combinations
+                    ])
+                    st.markdown(combo_html, unsafe_allow_html=True)
+                    if len(combos) > 10:
+                        st.caption(f"... and {len(combos) - 10} more combinations")
+                else:
+                    st.info("No combinations available (need at least 2 keywords)")
             else:
-                st.info("No combinations available (need at least 2 keywords)")
-        else:
-            st.info("No keywords available")
+                st.info("No keywords available")
 
-        st.markdown("### 🔁 Level 1 (Single keywords)")
-        if keywords:
-            kw_html = " ".join([
-                f'<span style="background-color: #e3f2fd; color: #1976d2; padding: 5px 12px; border-radius: 15px; margin: 3px; display: inline-block; font-weight: 500;">{kw}</span>'
-                for kw in keywords
-            ])
-            st.markdown(kw_html, unsafe_allow_html=True)
-        else:
-            st.info("No keywords available")
+            st.markdown("### 🔁 Level 1 (Single keywords)")
+            if keywords:
+                kw_html = " ".join([
+                    f'<span style="background-color: #e3f2fd; color: #1976d2; padding: 5px 12px; border-radius: 15px; margin: 3px; display: inline-block; font-weight: 500;">{kw}</span>'
+                    for kw in keywords
+                ])
+                st.markdown(kw_html, unsafe_allow_html=True)
+            else:
+                st.info("No keywords available")
 
-        st.markdown("### 🔁 Level 2 Synonyms")
-        if level2_by_kw:
-            for item in level2_by_kw:
-                kw = item.get("keyword", "")
-                syns = item.get("synonyms", [])
-                if not syns:
-                    continue
+            st.markdown("### 🔁 Level 2 Synonyms")
+            if level2_by_kw:
+                for item in level2_by_kw:
+                    kw = item.get("keyword", "")
+                    syns = item.get("synonyms", [])
+                    if not syns:
+                        continue
+                    syn_html = " ".join([
+                        f'<span style="background-color: #fff3cd; color: #856404; padding: 5px 12px; border-radius: 15px; margin: 3px; display: inline-block; font-weight: 500;">{syn}</span>'
+                        for syn in syns
+                    ])
+                    st.markdown(f"**{kw}**: " + syn_html, unsafe_allow_html=True)
+            elif level2_syns:
                 syn_html = " ".join([
                     f'<span style="background-color: #fff3cd; color: #856404; padding: 5px 12px; border-radius: 15px; margin: 3px; display: inline-block; font-weight: 500;">{syn}</span>'
-                    for syn in syns
+                    for syn in level2_syns
                 ])
-                st.markdown(f"**{kw}**: " + syn_html, unsafe_allow_html=True)
-        elif level2_syns:
-            syn_html = " ".join([
-                f'<span style="background-color: #fff3cd; color: #856404; padding: 5px 12px; border-radius: 15px; margin: 3px; display: inline-block; font-weight: 500;">{syn}</span>'
-                for syn in level2_syns
-            ])
-            st.markdown(syn_html, unsafe_allow_html=True)
-        else:
-            st.info("No Level 2 synonyms available")
+                st.markdown(syn_html, unsafe_allow_html=True)
+            else:
+                st.info("No Level 2 synonyms available")
 
-        st.markdown("### ✨ Level 3 Synonym + Magic")
-        if level3_by_kw:
-            for item in level3_by_kw:
-                kw = item.get("keyword", "")
-                pairs = item.get("pairs", [])
-                if not pairs:
-                    continue
+            st.markdown("### ✨ Level 3 Synonym + Magic")
+            if level3_by_kw:
+                for item in level3_by_kw:
+                    kw = item.get("keyword", "")
+                    pairs = item.get("pairs", [])
+                    if not pairs:
+                        continue
+                    pair_html = " ".join([
+                        f'<span style="background-color: #e8f5e9; color: #2e7d32; padding: 5px 12px; border-radius: 15px; margin: 3px; display: inline-block; font-weight: 500;">{pair}</span>'
+                        for pair in pairs
+                    ])
+                    st.markdown(f"**{kw}**: " + pair_html, unsafe_allow_html=True)
+            elif level3_pairs:
                 pair_html = " ".join([
                     f'<span style="background-color: #e8f5e9; color: #2e7d32; padding: 5px 12px; border-radius: 15px; margin: 3px; display: inline-block; font-weight: 500;">{pair}</span>'
-                    for pair in pairs
+                    for pair in level3_pairs
                 ])
-                st.markdown(f"**{kw}**: " + pair_html, unsafe_allow_html=True)
-        elif level3_pairs:
-            pair_html = " ".join([
-                f'<span style="background-color: #e8f5e9; color: #2e7d32; padding: 5px 12px; border-radius: 15px; margin: 3px; display: inline-block; font-weight: 500;">{pair}</span>'
-                for pair in level3_pairs
-            ])
-            st.markdown(pair_html, unsafe_allow_html=True)
-        else:
-            st.info("No Level 3 synonym+magic pairs available")
+                st.markdown(pair_html, unsafe_allow_html=True)
+            else:
+                st.info("No Level 3 synonym+magic pairs available")
         
         # === ALWAYS VISIBLE: Source Sentences ===
         st.markdown("### 📄 Source Sentences")
