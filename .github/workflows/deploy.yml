@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:  # Cho phép trigger thủ công
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -33,22 +33,18 @@ jobs:
             PROJECT_DIR="/srv/poc_elastik"
             REPO_BRANCH="main"
             
-            # Load bash profile để có đủ PATH (nvm, npm, pm2...)
-            # Dùng || true để tránh lỗi khi .bashrc có interactive checks
             source "$HOME/.bashrc" 2>/dev/null || true
             source "$HOME/.profile" 2>/dev/null || true
             source "$HOME/.nvm/nvm.sh" 2>/dev/null || true
             
-            # Load path cơ bản + npm global
             export PATH=$PATH:/usr/local/bin:/usr/bin:$HOME/.npm-global/bin:$HOME/.local/bin
             
             # ============================================
             # 1. CLONE/UPDATE CODE
             # ============================================
             echo ""
-            echo ">>> [1/5] Cập nhật source code..."
+            echo ">>> [1/6] Cập nhật source code..."
             
-            # Tạo thư mục nếu chưa có
             if [ ! -d "$PROJECT_DIR" ]; then
               sudo mkdir -p "$PROJECT_DIR"
               sudo chown $USER:$USER "$PROJECT_DIR"
@@ -56,12 +52,10 @@ jobs:
             
             cd "$PROJECT_DIR"
             
-            # Clone code
             if [ ! -d ".git" ]; then
               git clone git@github-poc:${{ github.repository }}.git .
             fi
             
-            # Pull code mới
             git fetch origin $REPO_BRANCH
             git reset --hard origin/$REPO_BRANCH
             echo "✅ Code updated"
@@ -70,7 +64,7 @@ jobs:
             # 2. SETUP PYTHON
             # ============================================
             echo ""
-            echo ">>> [2/5] Cài đặt thư viện Python..."
+            echo ">>> [2/6] Cài đặt thư viện Python..."
             
             PYTHON_CMD="python3"
             if ! command -v python3 &> /dev/null; then PYTHON_CMD="python"; fi
@@ -88,12 +82,11 @@ jobs:
             # 3. LOAD ENV & CHECK ELASTICSEARCH
             # ============================================
             echo ""
-            echo ">>> [3/5] Load môi trường & Kiểm tra ES..."
+            echo ">>> [3/6] Load môi trường & Kiểm tra ES..."
             
-            # --- PHẦN QUAN TRỌNG: Load .env an toàn ---
             if [ -f ".env" ]; then
               echo "Loading .env file..."
-              set -a  # Tự động export các biến được load
+              set -a
               source .env
               set +a
               echo "✅ Loaded environment variables"
@@ -101,7 +94,6 @@ jobs:
               echo "⚠️  WARNING: .env file not found. App might crash!"
             fi
             
-            # Kiểm tra Elasticsearch
             ES_HOST="${ES_HOST:-http://localhost:9200}"
             if curl -s "$ES_HOST" > /dev/null 2>&1; then
               echo "✅ Elasticsearch is running at $ES_HOST"
@@ -113,11 +105,9 @@ jobs:
             # 4. SETUP SYSTEMD SERVICES
             # ============================================
             echo ""
-            echo ">>> [4/5] Cấu hình systemd services..."
+            echo ">>> [4/6] Cấu hình systemd services..."
             
-            VENV_PYTHON="$PROJECT_DIR/venv/bin/python"
-            
-            # Tạo service file cho FastAPI (dùng sed để strip leading spaces)
+            # FastAPI Service
             cat << 'FASTAPI_EOF' | sed 's/^[[:space:]]*//' | sudo tee /etc/systemd/system/poc-fastapi.service > /dev/null
             [Unit]
             Description=POC FastAPI Backend
@@ -131,12 +121,16 @@ jobs:
             ExecStart=/srv/poc_elastik/venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000
             Restart=always
             RestartSec=3
+            
+            # Memory limits để tránh crash
+            MemoryMax=2G
+            MemoryHigh=1.5G
 
             [Install]
             WantedBy=multi-user.target
             FASTAPI_EOF
             
-            # Tạo service file cho Streamlit
+            # Streamlit Service
             cat << 'STREAMLIT_EOF' | sed 's/^[[:space:]]*//' | sudo tee /etc/systemd/system/poc-streamlit.service > /dev/null
             [Unit]
             Description=POC Streamlit Frontend
@@ -150,30 +144,75 @@ jobs:
             ExecStart=/srv/poc_elastik/venv/bin/python -m streamlit run streamlit_app.py --server.port 8501 --server.address 0.0.0.0 --server.headless true --browser.gatherUsageStats false
             Restart=always
             RestartSec=3
+            
+            # Memory limits
+            MemoryMax=2G
+            MemoryHigh=1.5G
 
             [Install]
             WantedBy=multi-user.target
             STREAMLIT_EOF
             
+            # ============================================
+            # 5. SETUP WATCHDOG SERVICE
+            # ============================================
+            echo ""
+            echo ">>> [5/6] Cài đặt Watchdog monitoring..."
+            
+            # Make watchdog executable
+            chmod +x "$PROJECT_DIR/watchdog.sh"
+            
+            # Create watchdog systemd service
+            cat << 'WATCHDOG_EOF' | sed 's/^[[:space:]]*//' | sudo tee /etc/systemd/system/poc-watchdog.service > /dev/null
+            [Unit]
+            Description=POC Watchdog - Monitor and auto-restart services
+            After=network.target poc-fastapi.service poc-streamlit.service
+            Requires=poc-fastapi.service poc-streamlit.service
+
+            [Service]
+            Type=simple
+            WorkingDirectory=/srv/poc_elastik
+            ExecStart=/srv/poc_elastik/watchdog.sh
+            Restart=always
+            RestartSec=10
+            
+            # Run as current user
+            User=$USER
+            Group=$USER
+
+            [Install]
+            WantedBy=multi-user.target
+            WATCHDOG_EOF
+            
             echo "✅ Systemd service files created"
             
             # ============================================
-            # 5. RESTART SERVICES
+            # 6. RESTART ALL SERVICES
             # ============================================
             echo ""
-            echo ">>> [5/6] Khởi động lại services..."
+            echo ">>> [6/6] Khởi động lại services..."
             
-            # Reload systemd và restart services
+            # Reload systemd
             sudo systemctl daemon-reload
-            sudo systemctl enable poc-fastapi poc-streamlit
+            
+            # Enable all services
+            sudo systemctl enable poc-fastapi poc-streamlit poc-watchdog
+            
+            # Restart main services first
             sudo systemctl restart poc-fastapi
             sudo systemctl restart poc-streamlit
             
-            # Đợi services khởi động
+            # Wait for services to stabilize
+            sleep 5
+            
+            # Start watchdog
+            sudo systemctl restart poc-watchdog
+            
+            # Wait for watchdog to initialize
             sleep 3
             
             # ============================================
-            # 6. FINISH
+            # 7. VERIFICATION & FINISH
             # ============================================
             echo ""
             echo "=============================================="
@@ -181,9 +220,15 @@ jobs:
             echo "=============================================="
             echo ""
             echo "📍 Services Status:"
+            echo ""
+            echo "FastAPI:"
             sudo systemctl status poc-fastapi --no-pager -l || true
             echo ""
+            echo "Streamlit:"
             sudo systemctl status poc-streamlit --no-pager -l || true
+            echo ""
+            echo "Watchdog:"
+            sudo systemctl status poc-watchdog --no-pager -l || true
             echo ""
             echo "📍 URLs:"
             echo "   - FastAPI: http://YOUR_SERVER_IP:8000/docs"
@@ -192,5 +237,8 @@ jobs:
             echo "📝 Useful commands:"
             echo "   sudo systemctl status poc-fastapi"
             echo "   sudo systemctl status poc-streamlit"
+            echo "   sudo systemctl status poc-watchdog"
             echo "   sudo journalctl -u poc-fastapi -f"
             echo "   sudo journalctl -u poc-streamlit -f"
+            echo "   sudo journalctl -u poc-watchdog -f"
+            echo "   tail -f /srv/poc_elastik/logs/watchdog.log"

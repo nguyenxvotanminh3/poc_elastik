@@ -1,0 +1,6 @@
+FastAPI
+uvicorn
+streamlit
+curl
+psutil
+gitpython

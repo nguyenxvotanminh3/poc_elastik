@@ -1,0 +1,19 @@
+# Force LF line endings for all text files (Linux compatible)
+* text=auto eol=lf
+
+# Explicitly declare text files
+*.py text eol=lf
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.json text eol=lf
+
+# Denote binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
