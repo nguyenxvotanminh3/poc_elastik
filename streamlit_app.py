@@ -619,7 +619,7 @@ with col3:
         disabled=not download_enabled,
         use_container_width=True,
         key="dl_txt_top",
-        help="Download conversation history (available after 5 iterations)"
+        help="Download complete conversation history"
     )
 
 with col4:
@@ -631,7 +631,7 @@ with col4:
         disabled=not download_enabled,
         use_container_width=True,
         key="dl_docx_top",
-        help="Download conversation history (available after 5 iterations)"
+        help="Download complete conversation history"
     )
 
 with col5:
