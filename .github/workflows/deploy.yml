@@ -134,12 +134,12 @@ jobs:
             pkill -9 -f "uvicorn main:app" 2>/dev/null || true
             pkill -9 -f "streamlit run" 2>/dev/null || true
             pkill -9 -f "watchdog.sh" 2>/dev/null || true
-            # Kill any process on ports 8000 and 8501
-            fuser -k 8000/tcp 2>/dev/null || true
-            fuser -k 8501/tcp 2>/dev/null || true
+            # Use lsof instead of fuser (safer, won't kill SSH)
+            lsof -ti:8000 | xargs kill -9 2>/dev/null || true
+            lsof -ti:8501 | xargs kill -9 2>/dev/null || true
             
             sleep 3
-            echo "✅ Old services stopped"
+            echo "✅ All processes killed"
             
             # Clear Python cache to ensure fresh code is loaded
             echo "Clearing Python cache..."
