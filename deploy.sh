@@ -58,6 +58,12 @@ fi
 sleep 2
 echo -e "${GREEN}✅ Old services stopped${NC}"
 
+# 2.5. Clear Python cache to ensure fresh code is loaded
+echo -e "${YELLOW}[2.5/4] Clearing Python cache...${NC}"
+find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+find . -name "*.pyc" -delete 2>/dev/null || true
+echo -e "${GREEN}✅ Python cache cleared${NC}"
+
 # 3. Install/Update dependencies
 echo -e "${YELLOW}[3/4] Installing dependencies...${NC}"
 if [ ! -d "venv" ]; then
