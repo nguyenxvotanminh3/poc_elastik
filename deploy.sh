@@ -50,10 +50,10 @@ if [ -f "stop_demo.sh" ]; then
     ./stop_demo.sh 2>/dev/null || true
 else
     # Fallback manual cleanup
-    pkill -f "watchdog.sh" 2>/dev/null || true
-    pkill -f "uvicorn main:app" 2>/dev/null || true
-    pkill -f "streamlit run" 2>/dev/null || true
-    pkill -f "ngrok http" 2>/dev/null || true
+    pkill -f "[w]atchdog.sh" 2>/dev/null || true
+    pkill -f "[u]vicorn main:app" 2>/dev/null || true
+    pkill -f "[s]treamlit run" 2>/dev/null || true
+    pkill -f "[n]grok http" 2>/dev/null || true
 fi
 sleep 2
 echo -e "${GREEN}✅ Old services stopped${NC}"
