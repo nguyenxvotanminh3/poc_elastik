@@ -634,7 +634,6 @@ def get_next_batch(
     )
     used_texts = set(session_state.get("used_sentence_ids", []))
     level_used = current_level
-    skip_semantic = False  # NEW: Flag to suppress semantic vector results
 
     # PART 1: Get keyword-based sentences (10 sentences)
     while len(sentences) < keyword_batch_size and current_level <= 4:
@@ -674,7 +673,6 @@ def get_next_batch(
                 # If we filled the batch, break/return (stay at Level 0 for next time if 0.0 not exhausted)
                 if len(sentences) >= keyword_batch_size:
                     level_used = 0
-                    skip_semantic = True  # NEW: Do not mix Vector with Biblical Parallels
                     break
                     
                 # If 0.0 NOT exhausted but we didn't fill batch, we loop again to get more 0.0?
@@ -748,10 +746,7 @@ def get_next_batch(
         else:
             level_used = current_level
 
-    # Apply suppression logic
-    if skip_semantic:
-        semantic_count = 0
-        logger.info("[get_next_batch] Skipping semantic results because Level 0.0 (Biblical Parallels) is active.")
+
 
     # PART 2: ALWAYS get semantic results (5 sentences)
     semantic_results = []
