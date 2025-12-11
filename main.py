@@ -901,7 +901,7 @@ async def continue_conversation(req: ContinueRequest):
         session_state=session_state,
         keywords=keywords,
         batch_size=req.limit if req.limit else 15,
-        original_query=session.original_query,
+        original_query=session.original_query if session.original_query else " ".join(keywords),
         semantic_count=5  # RESTORED: User wants 5 vector results always (blended)
     )
     
