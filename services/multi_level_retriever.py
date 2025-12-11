@@ -634,46 +634,28 @@ def get_next_batch(
     )
     used_texts = set(session_state.get("used_sentence_ids", []))
     level_used = current_level
+    skip_semantic = False  # NEW: Flag to suppress semantic vector results
 
     # PART 1: Get keyword-based sentences (10 sentences)
     while len(sentences) < keyword_batch_size and current_level <= 4:
-        if current_level not in enabled_levels:
-            current_level += 1
-            continue
-
-        remaining = keyword_batch_size - len(sentences)
-
-        if current_level == 0:
-            # LEVEL 0.0 CHECK: Biblical Parallels
-            # Check if we have parallel tasks to process first
-            parallels_data = session_state.get("biblical_parallels")
-            offset_00 = level_offsets.get("0.0", 0)
-            
-            # If 0.0 is not marked as done (-1) and we have data
-            if parallels_data and offset_00 != -1:
-                p_sents, p_new_off, p_exh, used_texts = fetch_paginated_parallels(
-                    parallels=parallels_data,
-                    offset=offset_00,
-                    limit=remaining,  # Try to fill remaining batch
-                    used_texts=used_texts
-                )
-                
-                # Update offset
-                level_offsets["0.0"] = p_new_off
-                if p_exh:
-                    level_offsets["0.0"] = -1  # Mark 0.0 as fully exhausted
-                    
-                # Add found sentences
-                for sent in p_sents:
-                    sent["level"] = 0
-                    # sent["source"] already set by fetch_paginated_parallels
-                sentences.extend(p_sents)
-                remaining = keyword_batch_size - len(sentences)
-                
+        # ... (context omitted) ...
+        # (Inside Level 0.0 block)
                 # If we filled the batch, break/return (stay at Level 0 for next time if 0.0 not exhausted)
                 if len(sentences) >= keyword_batch_size:
                     level_used = 0
+                    skip_semantic = True  # NEW: Do not mix Vector with Biblical Parallels
                     break
+        
+        # ... (rest of loop) ...
+    
+    # Apply suppression logic
+    if skip_semantic:
+        semantic_count = 0
+        logger.info("[get_next_batch] Skipping semantic results because Level 0.0 (Biblical Parallels) is active.")
+
+    # PART 2: ALWAYS get semantic results (5 sentences)
+    semantic_results = []
+    if original_query and semantic_count > 0:
                     
                 # If 0.0 NOT exhausted but we didn't fill batch, we loop again to get more 0.0?
                 # fetch_paginated_parallels usually fetches 'limit' items.

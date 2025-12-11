@@ -70,18 +70,17 @@ def is_duplicate(
     text_len = len(text)
     max_similar_checks = 100  # Increased from 50 to ensure we catch near-duplicates
     
-    check_count = 0
+    # Sort seen_texts by length relative to text_len to check most promising candidates first?
+    # No, simple iteration is O(N). Let's just remove the arbitrary limit.
+    # We rely on the length-difference check to skip expensive SequenceMatcher calls.
+    
     for seen_text in seen_texts:
-        if check_count >= max_similar_checks:
-            break
-            
         seen_len = len(seen_text)
         
         # Skip if length difference > 15% (slightly relaxed from 10%)
+        # This is the primary optimization to avoid O(N) slow text comparisons
         if abs(text_len - seen_len) / max(text_len, seen_len) > 0.15:
             continue
-        
-        check_count += 1
         
         # Check similarity only for close-length texts
         similarity = calculate_similarity(text, seen_text)

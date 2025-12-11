@@ -902,7 +902,7 @@ async def continue_conversation(req: ContinueRequest):
         keywords=keywords,
         batch_size=req.limit if req.limit else 15,
         original_query=session.original_query,
-        semantic_count=0  
+        semantic_count=5  # RESTORED: User wants 5 vector results always (blended)
     )
     
     # FALLBACK: If levels 0-3 yielded nothing (or we skipped past them), 
