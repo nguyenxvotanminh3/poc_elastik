@@ -85,7 +85,21 @@ def build_final_prompt(
     
     # Use custom_prompt if provided, otherwise use default
     if custom_prompt:
+        # Check if this is a "continue" / "Tell me more" request
+        continue_instruction = ""
+        if continue_mode:
+            continue_instruction = f"""
+IMPORTANT UPDATE FOR "TELL ME MORE" (Iteration {continue_count}):
+- This is a follow-up request to explore DEEPER into the topic.
+- Do NOT repeat the previous introduction or main points.
+- Focus on the NEW source material provided below.
+- Provide a FRESH perspective or a specific aspect not yet covered.
+- Title and Introduction must be completely different from the previous one.
+"""
+        
         prompt = f"""{custom_prompt}
+
+{continue_instruction}
 
 QUESTION: {user_query}
 
@@ -93,6 +107,7 @@ MEANING: {keyword_meaning}
 {parallels_section}{parallels_sources_section}
 {vector_section}{keyword_section}"""
     else:
+        # Default prompt logic (fallback)
         prompt = f"""Answer based on sources below.
 
 QUESTION: {user_query}
